@@ -183,22 +183,46 @@ powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1
 
 ## Установка
 
+**JOSM должен быть закрыт**: иначе он перезапишет `preferences.xml` при выходе.
+Плагин лежит в каталоге настроек JOSM — он разный по системам:
+
+| Система | Каталог JOSM |
+|---|---|
+| Windows | `%APPDATA%\JOSM` |
+| macOS | `~/Library/Preferences/JOSM` |
+| Linux | `~/.config/JOSM` (или `~/.josm`, если эта папка существует) |
+
+### Windows
+
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
 ```
 
-**JOSM должен быть закрыт**: иначе он перезапишет `preferences.xml` при выходе.
-Скрипт копирует `chainpoi.jar` в `%APPDATA%\JOSM\plugins`, делает бэкап
-`preferences.xml` и добавляет `<entry value='chainpoi'/>` в список плагинов.
+Скрипт копирует `chainpoi.jar` в `plugins`, делает бэкап `preferences.xml`
+и добавляет `<entry value='chainpoi'/>` в список плагинов.
+
+### macOS и Linux
+
+```
+sh install.sh
+```
+
+Скрипт сам находит каталог JOSM по таблице выше, копирует jar, делает бэкап
+`preferences.xml` и добавляет запись. Если каталога `plugins` ещё нет —
+запустите JOSM один раз, закройте и повторите.
+
+### Вручную (любая система)
+
+1. Закрыть JOSM.
+2. Скопировать `chainpoi.jar` в `<каталог JOSM>/plugins/`.
+3. В `<каталог JOSM>/preferences.xml` найти `<list key='plugins'>` и добавить
+   строку `<entry value='chainpoi'/>`.
+4. Запустить JOSM.
 
 ## Удаление
 
-```
-Remove-Item "$env:APPDATA\JOSM\plugins\chainpoi.jar"
-```
-
-и убрать `<entry value='chainpoi'/>` из `<list key='plugins'>`
-в `%APPDATA%\JOSM\preferences.xml` (при закрытом JOSM).
+Закрыть JOSM, удалить `<каталог JOSM>/plugins/chainpoi.jar` и строку
+`<entry value='chainpoi'/>` из `<list key='plugins'>` в `preferences.xml`.
 
 ## Ограничения
 

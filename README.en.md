@@ -184,22 +184,46 @@ JDK and jar paths are set at the top of `build.ps1`.
 
 ## Install
 
+**JOSM must be closed**: otherwise it overwrites `preferences.xml` on exit.
+The plugin lives in JOSM's settings directory, which differs per system:
+
+| System | JOSM directory |
+|---|---|
+| Windows | `%APPDATA%\JOSM` |
+| macOS | `~/Library/Preferences/JOSM` |
+| Linux | `~/.config/JOSM` (or `~/.josm` if that directory exists) |
+
+### Windows
+
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
 ```
 
-**JOSM must be closed**: otherwise it overwrites `preferences.xml` on exit.
-The script copies `chainpoi.jar` to `%APPDATA%\JOSM\plugins`, backs up
-`preferences.xml` and adds `<entry value='chainpoi'/>` to the plugin list.
+The script copies `chainpoi.jar` to `plugins`, backs up `preferences.xml` and
+adds `<entry value='chainpoi'/>` to the plugin list.
+
+### macOS and Linux
+
+```
+sh install.sh
+```
+
+The script finds the JOSM directory itself (see the table), copies the jar,
+backs up `preferences.xml` and adds the entry. If the `plugins` directory does
+not exist yet, start JOSM once, close it and run the script again.
+
+### Manually (any system)
+
+1. Close JOSM.
+2. Copy `chainpoi.jar` to `<JOSM directory>/plugins/`.
+3. In `<JOSM directory>/preferences.xml` find `<list key='plugins'>` and add
+   the line `<entry value='chainpoi'/>`.
+4. Start JOSM.
 
 ## Uninstall
 
-```
-Remove-Item "$env:APPDATA\JOSM\plugins\chainpoi.jar"
-```
-
-and remove `<entry value='chainpoi'/>` from `<list key='plugins'>` in
-`%APPDATA%\JOSM\preferences.xml` (with JOSM closed).
+Close JOSM, delete `<JOSM directory>/plugins/chainpoi.jar` and the
+`<entry value='chainpoi'/>` line from `<list key='plugins'>` in `preferences.xml`.
 
 ## Limitations
 
