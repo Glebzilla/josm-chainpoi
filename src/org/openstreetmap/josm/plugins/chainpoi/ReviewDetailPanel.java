@@ -43,6 +43,7 @@ public class ReviewDetailPanel extends JPanel {
     private final transient Listener listener;
     private final JLabel title = new JLabel(" ");
     private final JLabel info = new JLabel(" ");
+    private final JLabel note = new JLabel(" ");
     private final JLabel warnings = new JLabel(" ");
     private final DiffModel diffModel = new DiffModel();
     private final JTable diffTable = new JTable(diffModel);
@@ -74,9 +75,13 @@ public class ReviewDetailPanel extends JPanel {
         head.setLayout(new javax.swing.BoxLayout(head, javax.swing.BoxLayout.Y_AXIS));
         title.setAlignmentX(0f);
         info.setAlignmentX(0f);
+        note.setAlignmentX(0f);
         warnings.setAlignmentX(0f);
         head.add(title);
         head.add(info);
+        note.setFont(note.getFont().deriveFont(Font.PLAIN, note.getFont().getSize2D() - 2f));
+        note.setForeground(new java.awt.Color(0x66, 0x66, 0x66));
+        head.add(note);
         head.add(warnings);
         add(head, BorderLayout.NORTH);
 
@@ -203,6 +208,17 @@ public class ReviewDetailPanel extends JPanel {
         info.setText("<html><body style='width:320px'>"
                 + escape(sb.toString()).replace("\n", "<br>") + "</body></html>");
 
+        Profile profile = row.store != null ? Profiles.get(row.store.chainId)
+                : (m.primitive != null ? Profiles.find(m.primitive) : null);
+        String noteText = profile == null ? null : profile.note;
+        if (noteText == null) {
+            note.setText(" ");
+            note.setVisible(false);
+        } else {
+            note.setText("<html><body style='width:320px'>" + escape(noteText) + "</body></html>");
+            note.setVisible(true);
+        }
+
         if (m.warnings.isEmpty()) {
             warnings.setText(" ");
         } else {
@@ -230,6 +246,8 @@ public class ReviewDetailPanel extends JPanel {
         row = null;
         title.setText("Магазин не выбран");
         info.setText("Выберите строку в таблице");
+        note.setText(" ");
+        note.setVisible(false);
         warnings.setText(" ");
         diffModel.set(new ArrayList<>(), false);
         diffCards.show(diffArea, CARD_NONE);

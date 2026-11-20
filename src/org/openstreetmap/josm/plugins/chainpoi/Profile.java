@@ -35,6 +35,9 @@ public final class Profile {
     /** Радиус поиска объекта в OSM; у источников с неточными координатами больше. */
     public double maxDistance = 100.0;
 
+    /** Постоянная пометка о источнике (показывается в подробностях). */
+    public String note;
+
     /** Помечает источник неполным (цепочка вызовов при создании профиля). */
     public Profile incompleteSource() {
         this.completeSource = false;
@@ -44,6 +47,12 @@ public final class Profile {
     /** Радиус сверки для сетей с неточными координатами. */
     public Profile withRadius(double meters) {
         this.maxDistance = meters;
+        return this;
+    }
+
+    /** Постоянная пометка о качестве источника. */
+    public Profile withNote(String text) {
+        this.note = text;
         return this;
     }
 
