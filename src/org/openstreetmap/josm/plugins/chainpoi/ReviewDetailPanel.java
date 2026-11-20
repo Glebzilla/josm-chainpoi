@@ -35,8 +35,6 @@ public class ReviewDetailPanel extends JPanel {
 
         void onShow(ReviewTableModel.Row row);
 
-        void onPanorama(ReviewTableModel.Row row);
-
         void onClose(ReviewTableModel.Row row);
     }
 
@@ -56,7 +54,6 @@ public class ReviewDetailPanel extends JPanel {
     private final JButton accept = new JButton("Принять");
     private final JButton skip = new JButton("Пропустить");
     private final JButton show = new JButton("Карта");
-    private final JButton panorama = new JButton("Панорамы");
     private final JButton close = new JButton("Закрылся");
 
     private ReviewTableModel.Row row;
@@ -101,7 +98,6 @@ public class ReviewDetailPanel extends JPanel {
         buttons.add(accept);
         buttons.add(skip);
         buttons.add(show);
-        buttons.add(panorama);
         buttons.add(close);
         add(buttons, BorderLayout.SOUTH);
 
@@ -110,7 +106,6 @@ public class ReviewDetailPanel extends JPanel {
         accept.setToolTipText("Применить отмеченные изменения к этому объекту");
         skip.setToolTipText("Не менять этот объект");
         show.setToolTipText("Показать объект на карте (масштаб около 200 м)");
-        panorama.setToolTipText("Яндекс.Карты со слоем панорам у магазина; из карты данные не берём — только фотографии панорам");
         close.setToolTipText("Отметить магазин закрытым: shop → disused:shop");
 
         prev.addActionListener(e -> fireNavigate(-1));
@@ -130,11 +125,7 @@ public class ReviewDetailPanel extends JPanel {
                 listener.onShow(row);
             }
         });
-        panorama.addActionListener(e -> {
-            if (row != null) {
-                listener.onPanorama(row);
-            }
-        });
+
         close.addActionListener(e -> {
             if (row != null) {
                 listener.onClose(row);
@@ -209,7 +200,6 @@ public class ReviewDetailPanel extends JPanel {
         close.setVisible(m.status == Match.Status.ORPHAN);
         skip.setEnabled(m.status != Match.Status.OK);
         show.setEnabled(m.primitive != null);
-        panorama.setEnabled(m.primitive != null || row.store != null);
         revalidate();
         repaint();
     }
@@ -225,7 +215,6 @@ public class ReviewDetailPanel extends JPanel {
         accept.setEnabled(false);
         skip.setEnabled(false);
         show.setEnabled(false);
-        panorama.setEnabled(false);
         close.setVisible(false);
     }
 

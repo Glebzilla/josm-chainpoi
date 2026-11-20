@@ -59,6 +59,7 @@ public class ReviewPanel extends ToggleDialog {
     private final JLabel hint = new JLabel(" ");
     private final JButton checkButton = new JButton("Проверить видимую область");
     private final JButton fileButton = new JButton("Из файла…");
+    private final JButton panoButton = new JButton("Панорамы");
     private final JButton applyButton = new JButton("Применить отмеченные");
     private final ReviewDetailPanel detail;
     private final CheckAction checkAction;
@@ -77,19 +78,20 @@ public class ReviewPanel extends ToggleDialog {
         JPanel topButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         topButtons.add(checkButton);
         topButtons.add(fileButton);
+        topButtons.add(panoButton);
         top.add(topButtons, BorderLayout.WEST);
         top.add(status, BorderLayout.CENTER);
         content.add(top, BorderLayout.NORTH);
 
         table.setFillsViewportHeight(true);
         table.setRowHeight(20);
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        int[] widths = {26, 112, 150, 165, 44, 118};
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        int[] widths = {26, 140, 150, 40, 140};
         for (int i = 0; i < widths.length; i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
         table.getColumnModel().getColumn(0).setMaxWidth(26);
-        table.getColumnModel().getColumn(4).setMaxWidth(46);
+        table.getColumnModel().getColumn(3).setMaxWidth(46);
         table.setDefaultRenderer(String.class, new StatusRenderer());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -124,6 +126,15 @@ public class ReviewPanel extends ToggleDialog {
 
         checkButton.addActionListener(e -> checkArea());
         fileButton.addActionListener(e -> loadFile());
+        panoButton.setEnabled(false);
+        panoButton.setToolTipText("Открыть панорамы у выбранного магазина");
+        panoButton.addActionListener(e -> {
+            ReviewTableModel.Row row = selectedRow();
+            if (row != null) {
+                openPanorama(row);
+            }
+        });
+        addRowMenu();
         applyButton.addActionListener(e -> applySelected());
 
         createLayout(content, false, Collections.emptyList());
@@ -490,7 +501,53 @@ public class ReviewPanel extends ToggleDialog {
     }
 
     private void updateDetail() {
-        detail.setRow(selectedRow(), editDataSet());
+        ReviewTableModel.Row row = selectedRow();
+        detail.setRow(row, editDataSet());
+        panoButton.setEnabled(row != null);
+    }
+
+    /** Правый клик по строке: панорамы и переход к объекту. */
+    private void addRowMenu() {
+        javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu();
+        javax.swing.JMenuItem pano = new javax.swing.JMenuItem("Панорамы");
+        pano.addActionListener(e -> {
+            ReviewTableModel.Row row = selectedRow();
+            if (row != null) {
+                openPanorama(row);
+            }
+        });
+        javax.swing.JMenuItem show = new javax.swing.JMenuItem("На карте");
+        show.addActionListener(e -> {
+            ReviewTableModel.Row row = selectedRow();
+            if (row != null) {
+                showOnMap(row);
+            }
+        });
+        menu.add(pano);
+        menu.add(show);
+
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                maybePopup(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                maybePopup(e);
+            }
+
+            private void maybePopup(MouseEvent e) {
+                if (!e.isPopupTrigger()) {
+                    return;
+                }
+                int row = table.rowAtPoint(e.getPoint());
+                if (row >= 0) {
+                    table.setRowSelectionInterval(row, row);
+                }
+                menu.show(table, e.getX(), e.getY());
+            }
+        });
     }
 
     private void showOnMap(ReviewTableModel.Row row) {
@@ -581,11 +638,6 @@ public class ReviewPanel extends ToggleDialog {
         @Override
         public void onShow(ReviewTableModel.Row row) {
             showOnMap(row);
-        }
-
-        @Override
-        public void onPanorama(ReviewTableModel.Row row) {
-            openPanorama(row);
         }
 
         @Override

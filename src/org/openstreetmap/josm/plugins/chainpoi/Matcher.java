@@ -85,7 +85,7 @@ public final class Matcher {
             }
         }
 
-        if (best == null || bestDistance > MAX_DISTANCE_M) {
+        if (best == null || bestDistance > profile.maxDistance) {
             return Match.missing();
         }
 

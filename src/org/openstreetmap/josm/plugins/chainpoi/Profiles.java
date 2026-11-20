@@ -51,7 +51,7 @@ public final class Profiles {
             KOSMETIK_PROFILE,
             new Profile("pyaterochka", "Пятёрочка", SHOP_KEYS,
                     p -> shopNamed(p, "пятерочка"),
-                    store -> new LinkedHashMap<>(store.tags), null).incompleteSource(),
+                    store -> new LinkedHashMap<>(store.tags), null).incompleteSource().withRadius(250),
             new Profile("ozon", "Ozon", SHOP_KEYS,
                     p -> "outpost".equals(p.get("shop")) && named(p, "ozon", "озон"),
                     store -> new LinkedHashMap<>(store.tags), null),

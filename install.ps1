@@ -17,7 +17,7 @@ if (-not (Test-Path -LiteralPath $prefs)) { throw "no JOSM preferences: $prefs" 
 $running = @(Get-CimInstance Win32_Process -Filter "Name='java.exe' or Name='javaw.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -match 'josm' })
 if ($running.Count -gt 0) {
-    throw "JOSM is still running (PID $($running.ProcessId -join ', ')). Close it and run again."
+    throw "JOSM is still running (PID $($running.ProcessId -join ', ')). Close it gracefully (Alt+F4 or tools/close-josm.ps1) and run again."
 }
 
 # 1. backup + copy
