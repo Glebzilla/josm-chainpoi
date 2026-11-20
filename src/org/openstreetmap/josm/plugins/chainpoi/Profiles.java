@@ -21,6 +21,10 @@ public final class Profiles {
             "shop", "name", "brand", "brand:wikidata", "operator", "opening_hours");
     private static final List<String> KOSMETIK_KEYS = List.of(
             "shop", "name", "name:ru", "operator", "opening_hours");
+    private static final List<String> SHOP_KEYS = List.of(
+            "shop", "name", "brand", "brand:wikidata", "operator", "opening_hours");
+    private static final List<String> LOCKER_KEYS = List.of(
+            "amenity", "name", "brand", "brand:wikidata", "operator");
 
     private static final Profile MAGNIT_PROFILE = new Profile(
             "magnit", MAGNIT, MAGNIT_KEYS,
@@ -42,7 +46,21 @@ public final class Profiles {
                 return List.of();
             });
 
-    private static final List<Profile> ALL = List.of(MAGNIT_PROFILE, KOSMETIK_PROFILE);
+    private static final List<Profile> ALL = List.of(
+            MAGNIT_PROFILE,
+            KOSMETIK_PROFILE,
+            new Profile("pyaterochka", "Пятёрочка", SHOP_KEYS,
+                    p -> shopNamed(p, "пятерочка"),
+                    store -> new LinkedHashMap<>(store.tags), null),
+            new Profile("ozon", "Ozon", SHOP_KEYS,
+                    p -> "outpost".equals(p.get("shop")) && named(p, "ozon", "озон"),
+                    store -> new LinkedHashMap<>(store.tags), null),
+            new Profile("ozon-box", "Ozon Box", LOCKER_KEYS,
+                    p -> "parcel_locker".equals(p.get("amenity")) && named(p, "ozon", "озон"),
+                    store -> new LinkedHashMap<>(store.tags), null),
+            new Profile("wildberries", "Wildberries", SHOP_KEYS,
+                    p -> shopNamed(p, "wildberries", "вайлдберриз"),
+                    store -> new LinkedHashMap<>(store.tags), null));
 
     private Profiles() {
     }
@@ -93,6 +111,27 @@ public final class Profiles {
 
     private static boolean kosmetik(String value) {
         return value != null && basic(value).contains("косметик");
+    }
+
+    /** Магазин (shop) нужного бренда: по brand или name. */
+    private static boolean shopNamed(OsmPrimitive p, String... names) {
+        return named(p, names) && p.hasKey("shop");
+    }
+
+    /** Совпадает ли бренд или название с одним из вариантов. */
+    private static boolean named(OsmPrimitive p, String... names) {
+        String brand = p.get("brand");
+        String name = p.get("name");
+        for (String n : names) {
+            if (contains(brand, n) || contains(name, n)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean contains(String value, String needle) {
+        return value != null && basic(value).contains(basic(needle));
     }
 
     private static String basic(String s) {

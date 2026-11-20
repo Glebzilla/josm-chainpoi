@@ -54,6 +54,7 @@ public class ReviewPanel extends ToggleDialog {
     private final JLabel status = new JLabel("Область ещё не проверялась");
     private final JLabel hint = new JLabel(" ");
     private final JButton checkButton = new JButton("Проверить видимую область");
+    private final JButton fileButton = new JButton("Из файла…");
     private final JButton applyButton = new JButton("Применить отмеченные");
     private final ReviewDetailPanel detail;
     private final CheckAction checkAction;
@@ -69,7 +70,10 @@ public class ReviewPanel extends ToggleDialog {
         JPanel content = new JPanel(new BorderLayout(0, 4));
 
         JPanel top = new JPanel(new BorderLayout(6, 0));
-        top.add(checkButton, BorderLayout.WEST);
+        JPanel topButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        topButtons.add(checkButton);
+        topButtons.add(fileButton);
+        top.add(topButtons, BorderLayout.WEST);
         top.add(status, BorderLayout.CENTER);
         content.add(top, BorderLayout.NORTH);
 
@@ -115,6 +119,7 @@ public class ReviewPanel extends ToggleDialog {
         content.add(bottom, BorderLayout.SOUTH);
 
         checkButton.addActionListener(e -> checkArea());
+        fileButton.addActionListener(e -> loadFile());
         applyButton.addActionListener(e -> applySelected());
 
         createLayout(content, false, Collections.emptyList());
@@ -177,6 +182,57 @@ public class ReviewPanel extends ToggleDialog {
                 });
             }
         }, "chainpoi-fetch").start();
+    }
+
+    /** Загружает выгрузку, сохранённую букмарклетом на сайте сети. */
+    private void loadFile() {
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        chooser.setDialogTitle("Выгрузка из браузера (JSON)");
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("JSON", "json"));
+        if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            PoiFile file = PoiFile.read(chooser.getSelectedFile().toPath());
+            List<Store> inView = filterToView(file.stores);
+            if (inView.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "В видимой области нет точек из файла.\nПодвиньте карту и загрузите снова.",
+                        "Сетевые магазины", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            stores = inView;
+            rebuild();
+            status.setText("Загружено " + inView.size() + " из " + file.stores.size()
+                    + " точек: " + chooser.getSelectedFile().getName());
+        } catch (Exception ex) {
+            Logging.error(ex);
+            javax.swing.JOptionPane.showMessageDialog(this,
+                    "Не удалось прочитать файл:\n" + ex.getMessage(),
+                    "Сетевые магазины", javax.swing.JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Оставляет точки в видимой области (с запасом), чтобы не сверять тысячи объектов. */
+    private static List<Store> filterToView(List<Store> all) {
+        if (MainApplication.getMap() == null) {
+            return all;
+        }
+        Bounds view = MainApplication.getMap().mapView.getRealBounds();
+        if (view == null) {
+            return all;
+        }
+        double margin = Math.max(view.getHeight(), view.getWidth()) * 0.5;
+        Bounds wide = new Bounds(
+                view.getMinLat() - margin, view.getMinLon() - margin,
+                view.getMaxLat() + margin, view.getMaxLon() + margin);
+        List<Store> out = new ArrayList<>();
+        for (Store s : all) {
+            if (wide.contains(new LatLon(s.lat, s.lon))) {
+                out.add(s);
+            }
+        }
+        return out;
     }
 
     /** Пересобирает таблицу по уже загруженным данным сети, без обращения к сайту. */
