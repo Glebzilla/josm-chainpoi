@@ -173,13 +173,23 @@ opening_hours=Mo-Su 08:00-20:00
 
 ## Сборка
 
-Gradle не нужен, сборка против локального `josm-latest.jar`:
+Gradle не нужен, сборка против локального `josm-latest.jar`.
+
+Windows:
 
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1
 ```
 
-Пути к JDK и jar заданы в начале `build.ps1`.
+macOS и Linux:
+
+```
+./build.sh
+JOSM_JAR=/путь/к/josm-latest.jar ./build.sh
+```
+
+Пути к JDK и jar заданы в начале `build.ps1`; в `build.sh` путь к jar берётся
+из `JOSM_JAR` (по умолчанию `~/Downloads/josm-latest.jar`). Нужен JDK 17+.
 
 ## Установка
 

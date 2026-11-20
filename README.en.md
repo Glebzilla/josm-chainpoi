@@ -174,13 +174,23 @@ The plugin reads nothing from the map — it only opens it in the browser.
 
 ## Build
 
-No Gradle: the plugin is built against a local `josm-latest.jar`:
+No Gradle: the plugin is built against a local `josm-latest.jar`.
+
+Windows:
 
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1
 ```
 
-JDK and jar paths are set at the top of `build.ps1`.
+macOS and Linux:
+
+```
+./build.sh
+JOSM_JAR=/path/to/josm-latest.jar ./build.sh
+```
+
+`build.ps1` has the JDK and jar paths at the top; `build.sh` takes the jar path
+from `JOSM_JAR` (default `~/Downloads/josm-latest.jar`). JDK 17+ is required.
 
 ## Install
 
