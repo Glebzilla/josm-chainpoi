@@ -18,12 +18,12 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 
@@ -71,8 +71,8 @@ public class ReviewPanel extends ToggleDialog {
     private final ReviewDetailPanel detail;
     private final CheckAction checkAction;
 
-    /** Галочки сетей: какие проверять. */
-    private final Map<String, JCheckBox> chainBoxes = new LinkedHashMap<>();
+    /** Переключатели сетей: нажатая кнопка — сеть проверяется. */
+    private final Map<String, JToggleButton> chainBoxes = new LinkedHashMap<>();
     private final Set<String> enabledChains = new LinkedHashSet<>();
 
     private List<Store> stores = Collections.emptyList();
@@ -275,18 +275,25 @@ public class ReviewPanel extends ToggleDialog {
         return out;
     }
 
-    /** Ряд галочек под кнопками: какие сети проверять. */
+    /** Ряд переключателей под кнопками: какие сети проверять. */
     private JPanel buildChainRow() {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        row.add(new JLabel("Сети:"));
         for (Profile profile : Profiles.all()) {
-            JCheckBox box = new JCheckBox(profile.name,
-                    org.openstreetmap.josm.tools.ImageProvider.get(iconFor(profile.id)));
+            javax.swing.Icon icon = org.openstreetmap.josm.tools.ImageProvider.get(iconFor(profile.id));
+            JToggleButton box = new JToggleButton(profile.name, icon);
+            box.putClientProperty("icon-on", icon);
+            box.putClientProperty("icon-off", greyIcon(icon));
             box.setSelected(true);
+            box.setFocusable(false);
+            box.setMargin(new java.awt.Insets(1, 4, 1, 4));
             box.setToolTipText("Проверять сеть «" + profile.name + "»");
             box.addActionListener(e -> {
+                styleChain(box);
                 updateEnabledChains();
                 rebuild();
             });
+            styleChain(box);
             chainBoxes.put(profile.id, box);
             enabledChains.add(profile.id);
             row.add(box);
@@ -294,9 +301,26 @@ public class ReviewPanel extends ToggleDialog {
         return row;
     }
 
+    /** Выключенная сеть — серая иконка и серый текст. */
+    private static void styleChain(JToggleButton box) {
+        boolean on = box.isSelected();
+        box.setIcon((javax.swing.Icon) box.getClientProperty(on ? "icon-on" : "icon-off"));
+        box.setForeground(on ? javax.swing.UIManager.getColor("Button.foreground")
+                : new java.awt.Color(0x99, 0x99, 0x99));
+    }
+
+    private static javax.swing.Icon greyIcon(javax.swing.Icon icon) {
+        if (icon instanceof javax.swing.ImageIcon) {
+            java.awt.Image grey = javax.swing.GrayFilter.createDisabledImage(
+                    ((javax.swing.ImageIcon) icon).getImage());
+            return new javax.swing.ImageIcon(grey);
+        }
+        return icon;
+    }
+
     private void updateEnabledChains() {
         enabledChains.clear();
-        for (Map.Entry<String, JCheckBox> e : chainBoxes.entrySet()) {
+        for (Map.Entry<String, JToggleButton> e : chainBoxes.entrySet()) {
             if (e.getValue().isSelected()) {
                 enabledChains.add(e.getKey());
             }

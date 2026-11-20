@@ -56,7 +56,7 @@ public class ReviewDetailPanel extends JPanel {
     private final JButton accept = new JButton("Принять");
     private final JButton skip = new JButton("Пропустить");
     private final JButton show = new JButton("Карта");
-    private final JButton panorama = new JButton(
+    private final JButton panorama = new JButton("Панорамы",
             org.openstreetmap.josm.tools.ImageProvider.get("panoramas"));
     private final JButton close = new JButton("Закрылся");
 
@@ -114,7 +114,7 @@ public class ReviewDetailPanel extends JPanel {
         close.setToolTipText("Отметить магазин закрытым: shop → disused:shop");
 
         panorama.setToolTipText("Открыть панорамы у этого магазина");
-        panorama.setPreferredSize(new java.awt.Dimension(34, 24));
+        panorama.setPreferredSize(new java.awt.Dimension(104, 24));
         prev.setPreferredSize(new java.awt.Dimension(36, 24));
         next.setPreferredSize(new java.awt.Dimension(36, 24));
         prev.setMargin(new java.awt.Insets(0, 0, 0, 0));

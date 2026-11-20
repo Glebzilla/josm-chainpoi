@@ -77,13 +77,19 @@ function New-Badge([string]$path, [string]$color, [string]$text, [int]$fontSize)
     $bmp = New-Object System.Drawing.Bitmap 16, 16
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAlias
+    $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
     $g.Clear([System.Drawing.Color]::Transparent)
 
     $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml($color))
-    $g.FillRectangle($brush, 1, 1, 14, 14)
+    $gp = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $gp.AddArc(1, 1, 5, 5, 180, 90)
+    $gp.AddArc(10, 1, 5, 5, 270, 90)
+    $gp.AddArc(10, 10, 5, 5, 0, 90)
+    $gp.AddArc(1, 10, 5, 5, 90, 90)
+    $gp.CloseFigure()
+    $g.FillPath($brush, $gp)
 
-    $font = New-Object System.Drawing.Font('Arial', $fontSize, [System.Drawing.FontStyle]::Bold)
+    $font = New-Object System.Drawing.Font('Arial', $fontSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
     $sf = New-Object System.Drawing.StringFormat
     $sf.Alignment = [System.Drawing.StringAlignment]::Center
     $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
@@ -101,9 +107,9 @@ $images = Join-Path $PSScriptRoot 'resources\images'
 New-ChainPoiIcon (Join-Path $images 'dialogs\chainpoi.png')
 New-ChainPoiIcon (Join-Path $images 'chainpoi.png')
 New-PanoramaIcon (Join-Path $images 'panoramas.png')
-New-Badge (Join-Path $images 'chain-magnit.png') '#E03A24' 'М' 9
-New-Badge (Join-Path $images 'chain-kosmetik.png') '#E91E63' 'МК' 7
-New-Badge (Join-Path $images 'chain-pyaterochka.png') '#2E7D32' '5' 10
-New-Badge (Join-Path $images 'chain-ozon.png') '#005BFF' 'O' 9
-New-Badge (Join-Path $images 'chain-ozon-box.png') '#0D47A1' 'O' 9
-New-Badge (Join-Path $images 'chain-wildberries.png') '#7B1FA2' 'W' 9
+New-Badge (Join-Path $images 'chain-magnit.png') '#E03A24' 'М' 11
+New-Badge (Join-Path $images 'chain-kosmetik.png') '#E91E63' 'К' 11
+New-Badge (Join-Path $images 'chain-pyaterochka.png') '#2E7D32' '5' 12
+New-Badge (Join-Path $images 'chain-ozon.png') '#005BFF' 'O' 11
+New-Badge (Join-Path $images 'chain-ozon-box.png') '#0D47A1' 'O' 11
+New-Badge (Join-Path $images 'chain-wildberries.png') '#7B1FA2' 'W' 11
