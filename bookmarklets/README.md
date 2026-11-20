@@ -31,6 +31,21 @@
 `ozon`, `ozon-box`, `wildberries`. `tags` — теги, с которыми плагин будет
 сравнивать и создавать объекты.
 
+## Какие теги ставить
+
+Сверено с пресетом «POI РФ-РТ» (literan) и name-suggestion-index:
+
+| Сеть | Теги |
+|---|---|
+| Пятёрочка | `shop=supermarket`, `name=Пятёрочка`, `name:ru=Пятёрочка`, `brand=Пятёрочка`, `brand:wikidata=Q1768969`, `brand:wikipedia=ru:Пятёрочка` |
+| Ozon (ПВЗ) | `shop=outpost`, `name=Ozon`, `brand=Ozon`, `brand:wikidata=Q2365235` |
+| Ozon box (постамат) | `amenity=parcel_locker`, `name=Ozon box`, `brand=Ozon box`, `brand:wikidata=Q2365235`, `ref=<номер постамата>` |
+| Wildberries | `shop=outpost`, `name=Wildberries`, `name:en=Wildberries`, `brand=Wildberries`, `brand:wikidata=Q24933714` |
+
+Контакты (`contact:*`), `wheelchair` и `fitting_room` пресет тоже предлагает,
+но это данные сети, а не точки: плагин их не добавляет, чтобы не плодить
+одинаковые значения в каждом объекте.
+
 ## Пятёрочка
 
 1. Откройте <https://5ka.ru/stores/> и дождитесь карты.

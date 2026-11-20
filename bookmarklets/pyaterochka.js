@@ -42,8 +42,10 @@
     const tags = {
       shop: 'supermarket',
       name: 'Пятёрочка',
+      'name:ru': 'Пятёрочка',
       brand: 'Пятёрочка',
-      'brand:wikidata': 'Q1768969'
+      'brand:wikidata': 'Q1768969',
+      'brand:wikipedia': 'ru:Пятёрочка'
     };
     if (hours) tags.opening_hours = hours;
 
