@@ -63,7 +63,7 @@ public class ReviewTableModel extends AbstractTableModel {
         }
     }
 
-    private static final String[] COLUMNS = {"", "Статус", "Сеть", "м", "Объект OSM"};
+    private static final String[] COLUMNS = {"", "Статус", "Сеть", "м", "Объект OSM", "Пан."};
 
     private final List<Row> rows = new ArrayList<>();
 
@@ -121,6 +121,8 @@ public class ReviewTableModel extends AbstractTableModel {
             case 3:
                 return r.match == null || r.match.distance < 0
                         ? "" : String.valueOf(Math.round(r.match.distance));
+            case 5:
+                return "";
             default:
                 return r.objectRef();
         }

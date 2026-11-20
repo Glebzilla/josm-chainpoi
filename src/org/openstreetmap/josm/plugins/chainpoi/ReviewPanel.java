@@ -48,6 +48,8 @@ public class ReviewPanel extends ToggleDialog {
     private static final Color GREEN = new Color(0x1B, 0x7A, 0x1B);
     private static final Color VIOLET = new Color(0x6A, 0x3D, 0x9A);
     private static final Color BLUE = new Color(0x1B, 0x5E, 0x9A);
+    /** Колонка с кнопкой «Пан.» в каждой строке. */
+    private static final int PANO_COLUMN = 5;
 
     /** Источники, которые опрашиваются при проверке области. */
     private static final List<ChainProvider> PROVIDERS = List.of(
@@ -59,7 +61,8 @@ public class ReviewPanel extends ToggleDialog {
     private final JLabel hint = new JLabel(" ");
     private final JButton checkButton = new JButton("Проверить видимую область");
     private final JButton fileButton = new JButton("Из файла…");
-    private final JButton panoButton = new JButton("Панорамы");
+    private final JButton panoButton = new JButton("Панорамы",
+            org.openstreetmap.josm.tools.ImageProvider.get("panoramas"));
     private final JButton applyButton = new JButton("Применить отмеченные");
     private final ReviewDetailPanel detail;
     private final CheckAction checkAction;
@@ -86,12 +89,14 @@ public class ReviewPanel extends ToggleDialog {
         table.setFillsViewportHeight(true);
         table.setRowHeight(20);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-        int[] widths = {26, 140, 150, 40, 140};
+        int[] widths = {26, 140, 150, 40, 140, 46};
         for (int i = 0; i < widths.length; i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
         table.getColumnModel().getColumn(0).setMaxWidth(26);
         table.getColumnModel().getColumn(3).setMaxWidth(46);
+        table.getColumnModel().getColumn(PANO_COLUMN).setMaxWidth(48);
+        table.getColumnModel().getColumn(PANO_COLUMN).setCellRenderer(new PanoRenderer());
         table.setDefaultRenderer(String.class, new StatusRenderer());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -101,11 +106,19 @@ public class ReviewPanel extends ToggleDialog {
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    ReviewTableModel.Row row = selectedRow();
-                    if (row != null) {
-                        showOnMap(row);
-                    }
+                int viewCol = table.columnAtPoint(e.getPoint());
+                int viewRow = table.rowAtPoint(e.getPoint());
+                if (viewRow < 0) {
+                    return;
+                }
+                ReviewTableModel.Row row = model.getRow(table.convertRowIndexToModel(viewRow));
+                if (row == null) {
+                    return;
+                }
+                if (viewCol == PANO_COLUMN) {
+                    openPanorama(row);
+                } else if (e.getClickCount() == 2) {
+                    showOnMap(row);
                 }
             }
         });
@@ -134,7 +147,6 @@ public class ReviewPanel extends ToggleDialog {
                 openPanorama(row);
             }
         });
-        addRowMenu();
         applyButton.addActionListener(e -> applySelected());
 
         createLayout(content, false, Collections.emptyList());
@@ -643,6 +655,24 @@ public class ReviewPanel extends ToggleDialog {
         @Override
         public void onClose(ReviewTableModel.Row row) {
             applyRow(row);
+        }
+    }
+
+    /** Кнопка «Пан.» в строке таблицы. Клик обрабатывается слушателем таблицы. */
+    private static final class PanoRenderer extends javax.swing.JButton
+            implements javax.swing.table.TableCellRenderer {
+
+        PanoRenderer() {
+            super(org.openstreetmap.josm.tools.ImageProvider.get("panoramas"));
+            setMargin(new java.awt.Insets(0, 2, 0, 2));
+            setFocusable(false);
+            setToolTipText("Открыть панорамы у этого магазина");
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            return this;
         }
     }
 

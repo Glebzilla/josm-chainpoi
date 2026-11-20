@@ -31,6 +31,46 @@ function New-ChainPoiIcon([string]$path) {
     Write-Output ("icon: $path  " + (Get-Item -LiteralPath $path).Length + " bytes")
 }
 
+function New-PanoramaIcon([string]$path) {
+    $dir = Split-Path -Parent $path
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+    $bmp = New-Object System.Drawing.Bitmap 16, 16
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.Clear([System.Drawing.Color]::Transparent)
+
+    # рамка
+    $frame = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 21, 101, 192))
+    $g.FillRectangle($frame, 1, 3, 14, 10)
+
+    # небо
+    $sky = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 187, 222, 251))
+    $g.FillRectangle($sky, 2, 4, 12, 8)
+
+    # солнце
+    $sun = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 255, 193, 7))
+    $g.FillEllipse($sun, 3, 5, 3, 3)
+
+    # холмы
+    $grass = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 67, 160, 71))
+    $points = @(
+        (New-Object System.Drawing.Point 2, 12),
+        (New-Object System.Drawing.Point 5, 7),
+        (New-Object System.Drawing.Point 8, 10),
+        (New-Object System.Drawing.Point 11, 7),
+        (New-Object System.Drawing.Point 14, 12)
+    )
+    $g.FillPolygon($grass, $points)
+
+    $g.Dispose()
+    $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+    $bmp.Dispose()
+
+    Write-Output ("icon: $path  " + (Get-Item -LiteralPath $path).Length + " bytes")
+}
+
 $images = Join-Path $PSScriptRoot 'resources\images'
 New-ChainPoiIcon (Join-Path $images 'dialogs\chainpoi.png')
 New-ChainPoiIcon (Join-Path $images 'chainpoi.png')
+New-PanoramaIcon (Join-Path $images 'panoramas.png')
