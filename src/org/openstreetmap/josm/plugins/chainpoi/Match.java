@@ -22,6 +22,8 @@ public final class Match {
         BAD,
         /** В OSM магазин есть, а у сети его уже нет. */
         ORPHAN,
+        /** Рядом объект другого формата сети (например, «М.Кос» вместо «М.Косметик»). */
+        OTHER_FORMAT,
         /** Данные OSM не загружены. */
         NO_DATA
     }
@@ -74,6 +76,8 @@ public final class Match {
                 return "ошибка разметки";
             case ORPHAN:
                 return "нет в данных сети";
+            case OTHER_FORMAT:
+                return "другой формат";
             default:
                 return "нет данных";
         }

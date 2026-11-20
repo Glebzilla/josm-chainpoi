@@ -8,6 +8,8 @@ differ, and (per checkbox) creates objects in the current layer.
 Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`), **M.Kosmetik** (`DG`)
 and **Pyaterochka** (source: the chain's job vacancy database).
 
+![Chain stores panel in JOSM](docs/screenshot.png)
+
 ## How it works
 
 1. Load an area in JOSM as usual (OSM data must be in the layer).
@@ -28,7 +30,9 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    - `mapping error` — the store is placed on a building outline or on an entrance;
    - `ok` — everything matches;
    - `not in chain data` — OSM has a store the chain doesn't have here
-     (possibly closed).
+     (possibly closed);
+   - `other format` — a nearby `М.Кос` (beauty format), not M.Kosmetik;
+     such an object is left untouched.
 5. Selecting a row shows the details below: full address (small font), OSM
    object, distance, warnings and the list of fields **"in OSM → chain"** with a
    checkbox per change (all checked).
@@ -56,7 +60,7 @@ entrance), so it is worth checking and dragging if needed.
 
 | Field | How it is compared |
 |---|---|
-| `shop` | exact value (`supermarket` / `convenience`) |
+| `shop` | exact value (`supermarket` / `convenience`); for «Моя цена» they are equivalent |
 | `name` | case, ё/е and quotes ignored; "магазин Магнит" ≠ "Магнит" |
 | `brand`, `brand:wikidata` | exact value |
 | `operator` | quotes and "АО" ignored |

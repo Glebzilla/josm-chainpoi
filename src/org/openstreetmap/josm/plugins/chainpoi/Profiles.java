@@ -97,9 +97,25 @@ public final class Profiles {
         return plainMagnit(p.get("brand")) || plainMagnit(p.get("name"));
     }
 
-    /** М.Косметик: в названии или бренде есть «косметик». */
+    /** М.Косметик: в названии или бренде есть «косметик», но это не «М.Кос». */
     static boolean isKosmetik(OsmPrimitive p) {
+        if (isMKos(p)) {
+            return false;
+        }
         return kosmetik(p.get("brand")) || kosmetik(p.get("name"));
+    }
+
+    /** «М.Кос» — бьюти-формат, не М.Косметик; такие объекты не трогаем. */
+    public static boolean isMKos(OsmPrimitive p) {
+        return isMKosName(p.get("name"));
+    }
+
+    static boolean isMKosName(String value) {
+        if (value == null) {
+            return false;
+        }
+        String t = basic(value).replace(".", "").replace(" ", "");
+        return "мкос".equals(t);
     }
 
     private static boolean plainMagnit(String value) {

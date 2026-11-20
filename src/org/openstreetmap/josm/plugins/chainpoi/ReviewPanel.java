@@ -432,6 +432,8 @@ public class ReviewPanel extends ToggleDialog {
                 return 3;
             case OK:
                 return 4;
+            case OTHER_FORMAT:
+                return 5;
             default:
                 return 5;
         }

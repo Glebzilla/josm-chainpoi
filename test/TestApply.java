@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +83,10 @@ public class TestApply {
         n.putAll(store.tags);
         ds.addPrimitive(n);
 
-        List<Match> orphans = Matcher.orphans(Collections.emptyList(), ds);
+        // Орфаны ищутся только по загруженным сетям: даём одну точку той же сети далеко.
+        List<Store> loaded = List.of(new Store(store.chainId, store.chainName, "far",
+                "", store.lat + 0.05, store.lon, store.format, store.tags));
+        List<Match> orphans = Matcher.orphans(loaded, ds);
         System.out.println("[orphan] found=" + orphans.size()
                 + (orphans.isEmpty() ? "" : " status=" + orphans.get(0).status));
 

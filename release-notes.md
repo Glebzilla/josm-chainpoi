@@ -5,9 +5,10 @@
 (часы, название, оператор, адрес). Каждый объект разбирается отдельно,
 на сервер OSM плагин ничего не загружает.
 
-Установка: скачать chainpoi-0.1.0.zip, закрыть JOSM, запустить install.ps1.
-Либо взять chainpoi.jar и положить в %APPDATA%\JOSM\plugins, добавив
-<entry value='chainpoi'/> в список plugins в preferences.xml.
+Установка: скачать архив для своей системы, закрыть JOSM и запустить
+install.ps1 (Windows) или install.sh (macOS, Linux). Либо взять chainpoi.jar
+и положить в папку plugins JOSM, добавив <entry value='chainpoi'/> в список
+plugins в preferences.xml.
 
 Требования: JOSM и Java 17+.
 Подробности: https://github.com/Glebzilla/josm-chainpoi

@@ -86,6 +86,15 @@ public final class Matcher {
         }
 
         if (best == null || bestDistance > profile.maxDistance) {
+            OsmPrimitive other = findMKos(store, ds);
+            if (other != null) {
+                LatLon c = center(other);
+                if (c != null) {
+                    double d = distance(store.lat, store.lon, c.lat(), c.lon());
+                    return Match.of(Match.Status.OTHER_FORMAT, other, d, List.of(),
+                            List.of("Рядом «М.Кос» — бьюти-формат, а не М.Косметик; такой объект не трогаем."));
+                }
+            }
             return Match.missing();
         }
 
@@ -174,6 +183,37 @@ public final class Matcher {
         return out;
     }
 
+    /** Ближайший объект «М.Кос» в пределах общего радиуса поиска. */
+    private static OsmPrimitive findMKos(Store store, DataSet ds) {
+        OsmPrimitive best = null;
+        double bestD = MAX_DISTANCE_M;
+        for (Node n : ds.getNodes()) {
+            if (!usable(n) || !Profiles.isMKos(n)) {
+                continue;
+            }
+            double d = distance(store.lat, store.lon, n.lat(), n.lon());
+            if (d < bestD) {
+                bestD = d;
+                best = n;
+            }
+        }
+        for (Way w : ds.getWays()) {
+            if (!usable(w) || !Profiles.isMKos(w)) {
+                continue;
+            }
+            LatLon c = center(w);
+            if (c == null) {
+                continue;
+            }
+            double d = distance(store.lat, store.lon, c.lat(), c.lon());
+            if (d < bestD) {
+                bestD = d;
+                best = w;
+            }
+        }
+        return best;
+    }
+
     private static boolean usable(OsmPrimitive p) {
         return p != null && !p.isDeleted() && !p.isIncomplete();
     }
@@ -206,6 +246,11 @@ public final class Matcher {
                 continue;
             }
             String osm = p.get(key);
+            if ("shop".equals(key) && "MC".equals(store.format)
+                    && isSmallShop(osm) && isSmallShop(chain)) {
+                // «Моя цена» бывает и convenience, и supermarket — не навязываем.
+                continue;
+            }
             FieldDiff diff = null;
             if (osm == null) {
                 diff = new FieldDiff(key, null, chain, FieldDiff.Kind.MISSING);
@@ -271,6 +316,12 @@ public final class Matcher {
         } catch (RuntimeException e) {
             return null;
         }
+    }
+
+    /** Мелкий формат: convenience и supermarket для «Моей цены» равнозначны. */
+    private static boolean isSmallShop(String value) {
+        String t = basic(value);
+        return "convenience".equals(t) || "supermarket".equals(t);
     }
 
     private static boolean sameValue(String key, String osm, String chain) {
