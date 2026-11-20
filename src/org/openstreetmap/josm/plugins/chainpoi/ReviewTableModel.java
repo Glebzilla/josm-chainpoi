@@ -30,7 +30,12 @@ public class ReviewTableModel extends AbstractTableModel {
         }
 
         public String title() {
-            return store != null ? store.formatLabel() : "Магнит (в OSM)";
+            if (store != null) {
+                return store.formatLabel();
+            }
+            Profile profile = match == null || match.primitive == null
+                    ? null : Profiles.find(match.primitive);
+            return (profile == null ? "Магнит" : profile.name) + " (в OSM)";
         }
 
         public String address() {

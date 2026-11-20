@@ -49,6 +49,10 @@ public class ReviewPanel extends ToggleDialog {
     private static final Color VIOLET = new Color(0x6A, 0x3D, 0x9A);
     private static final Color BLUE = new Color(0x1B, 0x5E, 0x9A);
 
+    /** Источники, которые опрашиваются при проверке области. */
+    private static final List<ChainProvider> PROVIDERS = List.of(
+            new MagnitProvider(), new PyaterochkaProvider());
+
     private final ReviewTableModel model = new ReviewTableModel();
     private final JTable table = new JTable(model);
     private final JLabel status = new JLabel("Область ещё не проверялась");
@@ -165,7 +169,14 @@ public class ReviewPanel extends ToggleDialog {
         Bounds query = bounds;
         new Thread(() -> {
             try {
-                List<Store> fetched = new MagnitProvider().fetch(query);
+                List<Store> fetched = new ArrayList<>();
+                for (ChainProvider provider : PROVIDERS) {
+                    try {
+                        fetched.addAll(provider.fetch(query));
+                    } catch (Exception ex) {
+                        Logging.warn("chainpoi: " + provider.name() + ": " + ex.getMessage());
+                    }
+                }
                 SwingUtilities.invokeLater(() -> {
                     stores = fetched;
                     rebuild();

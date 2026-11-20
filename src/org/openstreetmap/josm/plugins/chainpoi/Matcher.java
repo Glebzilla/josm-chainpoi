@@ -124,12 +124,19 @@ public final class Matcher {
         if (ds == null || stores == null) {
             return out;
         }
+        java.util.Set<String> loaded = new java.util.HashSet<>();
+        for (Store s : stores) {
+            loaded.add(s.chainId);
+        }
         for (OsmPrimitive p : chainPrimitives(ds)) {
             if (!p.hasKey("shop")) {
                 continue;
             }
             Profile profile = Profiles.find(p);
-            double d = nearestStore(stores, p, profile == null ? null : profile.id);
+            if (profile == null || !profile.completeSource || !loaded.contains(profile.id)) {
+                continue;
+            }
+            double d = nearestStore(stores, p, profile.id);
             if (d > ORPHAN_RADIUS_M) {
                 List<String> warnings = new ArrayList<>();
                 warnings.add("В OSM есть магазин сети, а у сети его в этом месте нет.");

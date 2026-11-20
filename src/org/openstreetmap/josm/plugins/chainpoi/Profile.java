@@ -26,6 +26,18 @@ public final class Profile {
     /** Дополнительные предупреждения (может быть {@code null}). */
     public final BiFunction<Store, List<FieldDiff>, List<String>> warnings;
 
+    /**
+     * Полон ли источник. У вакансий Пятёрочки — нет: магазины без вакансий
+     * в выгрузку не попадают, поэтому «нет в данных сети» по ним не считаем.
+     */
+    public boolean completeSource = true;
+
+    /** Помечает источник неполным (цепочка вызовов при создании профиля). */
+    public Profile incompleteSource() {
+        this.completeSource = false;
+        return this;
+    }
+
     public Profile(String id, String name, List<String> keys,
                    Predicate<OsmPrimitive> matcher,
                    Function<Store, Map<String, String>> createTags,
