@@ -67,7 +67,7 @@ public class ReviewPanel extends ToggleDialog {
     private final JLabel hint = new JLabel(" ");
     private final JButton checkButton = new JButton("Проверить");
     private final JButton fileButton = new JButton("Импорт…");
-    private final JButton applyButton = new JButton("Применить отмеченные");
+    private final JButton applyButton = new JButton("Принять отмеченные");
     private final ReviewDetailPanel detail;
     private final CheckAction checkAction;
 
