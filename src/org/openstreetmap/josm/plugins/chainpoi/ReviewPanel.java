@@ -278,7 +278,6 @@ public class ReviewPanel extends ToggleDialog {
     /** Ряд переключателей под кнопками: какие сети проверять. */
     private JPanel buildChainRow() {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        row.add(new JLabel("Сети:"));
         for (Profile profile : Profiles.all()) {
             javax.swing.Icon icon = org.openstreetmap.josm.tools.ImageProvider.get(iconFor(profile.id));
             JToggleButton box = new JToggleButton(profile.name, icon);
