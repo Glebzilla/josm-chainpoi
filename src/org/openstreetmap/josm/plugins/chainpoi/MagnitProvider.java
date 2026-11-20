@@ -171,6 +171,8 @@ public final class MagnitProvider implements ChainProvider {
             tags.put("brand", BRAND_KOSMETIK);
         } else {
             tags.put("name", CHAIN);
+            tags.put("name:ru", CHAIN);
+            tags.put("name:en", "Magnit");
             tags.put("brand", CHAIN);
         }
         tags.put("brand:wikidata", "Q940518");

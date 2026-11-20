@@ -103,6 +103,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File test/run-tests.ps1
 ```
 shop=supermarket            (MM, MC, GM)   convenience для MM_MINI
 name=Магнит
+name:ru=Магнит
+name:en=Magnit
 brand=Магнит
 brand:wikidata=Q940518
 operator=АО «Тандер»
@@ -114,8 +116,8 @@ opening_hours=Mo-Su 08:00-20:00
 показывается подсказкой «по зданию: …».
 
 Набор совпадает с пресетом Магнита в iD/NSI (`shop`, `brand`, `brand:wikidata`,
-`name`) плюс `operator` и `opening_hours`. `name:en`/`name:ru`, контакты сети
-и `brand:wikipedia` из российского пресета намеренно не добавляются.
+`name`, `name:ru`, `name:en`) плюс `operator` и `opening_hours`. `brand:en`/`brand:ru`,
+контакты сети и `brand:wikipedia` из российского пресета намеренно не добавляются.
 
 ## Форматы магазинов
 
