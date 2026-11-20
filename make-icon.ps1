@@ -70,7 +70,40 @@ function New-PanoramaIcon([string]$path) {
     Write-Output ("icon: $path  " + (Get-Item -LiteralPath $path).Length + " bytes")
 }
 
+function New-Badge([string]$path, [string]$color, [string]$text, [int]$fontSize) {
+    $dir = Split-Path -Parent $path
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+    $bmp = New-Object System.Drawing.Bitmap 16, 16
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAlias
+    $g.Clear([System.Drawing.Color]::Transparent)
+
+    $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml($color))
+    $g.FillRectangle($brush, 1, 1, 14, 14)
+
+    $font = New-Object System.Drawing.Font('Arial', $fontSize, [System.Drawing.FontStyle]::Bold)
+    $sf = New-Object System.Drawing.StringFormat
+    $sf.Alignment = [System.Drawing.StringAlignment]::Center
+    $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
+    $rect = New-Object System.Drawing.RectangleF 0, 0, 16, 16
+    $g.DrawString($text, $font, [System.Drawing.Brushes]::White, $rect, $sf)
+
+    $g.Dispose()
+    $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+    $bmp.Dispose()
+
+    Write-Output ("badge: $path  " + (Get-Item -LiteralPath $path).Length + " bytes")
+}
+
 $images = Join-Path $PSScriptRoot 'resources\images'
 New-ChainPoiIcon (Join-Path $images 'dialogs\chainpoi.png')
 New-ChainPoiIcon (Join-Path $images 'chainpoi.png')
 New-PanoramaIcon (Join-Path $images 'panoramas.png')
+New-Badge (Join-Path $images 'chain-magnit.png') '#E03A24' 'М' 9
+New-Badge (Join-Path $images 'chain-kosmetik.png') '#E91E63' 'МК' 7
+New-Badge (Join-Path $images 'chain-pyaterochka.png') '#2E7D32' '5' 10
+New-Badge (Join-Path $images 'chain-ozon.png') '#005BFF' 'O' 9
+New-Badge (Join-Path $images 'chain-ozon-box.png') '#0D47A1' 'O' 9
+New-Badge (Join-Path $images 'chain-wildberries.png') '#7B1FA2' 'W' 9

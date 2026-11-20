@@ -10,9 +10,15 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -59,13 +65,15 @@ public class ReviewPanel extends ToggleDialog {
     private final JTable table = new JTable(model);
     private final JLabel status = new JLabel("Область ещё не проверялась");
     private final JLabel hint = new JLabel(" ");
-    private final JButton checkButton = new JButton("Проверить видимую область");
-    private final JButton fileButton = new JButton("Из файла…");
-    private final JButton panoButton = new JButton("Панорамы",
-            org.openstreetmap.josm.tools.ImageProvider.get("panoramas"));
+    private final JButton checkButton = new JButton("Проверить");
+    private final JButton fileButton = new JButton("Импорт…");
     private final JButton applyButton = new JButton("Применить отмеченные");
     private final ReviewDetailPanel detail;
     private final CheckAction checkAction;
+
+    /** Галочки сетей: какие проверять. */
+    private final Map<String, JCheckBox> chainBoxes = new LinkedHashMap<>();
+    private final Set<String> enabledChains = new LinkedHashSet<>();
 
     private List<Store> stores = Collections.emptyList();
 
@@ -81,21 +89,24 @@ public class ReviewPanel extends ToggleDialog {
         JPanel topButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         topButtons.add(checkButton);
         topButtons.add(fileButton);
-        topButtons.add(panoButton);
         top.add(topButtons, BorderLayout.WEST);
         top.add(status, BorderLayout.CENTER);
-        content.add(top, BorderLayout.NORTH);
+
+        JPanel north = new JPanel(new BorderLayout(0, 2));
+        north.add(top, BorderLayout.NORTH);
+        north.add(buildChainRow(), BorderLayout.SOUTH);
+        content.add(north, BorderLayout.NORTH);
 
         table.setFillsViewportHeight(true);
         table.setRowHeight(20);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-        int[] widths = {26, 140, 150, 40, 140, 46};
+        int[] widths = {26, 140, 150, 40, 140, 48};
         for (int i = 0; i < widths.length; i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
         table.getColumnModel().getColumn(0).setMaxWidth(26);
         table.getColumnModel().getColumn(3).setMaxWidth(46);
-        table.getColumnModel().getColumn(PANO_COLUMN).setMaxWidth(48);
+        table.getColumnModel().getColumn(PANO_COLUMN).setMaxWidth(56);
         table.getColumnModel().getColumn(PANO_COLUMN).setCellRenderer(new PanoRenderer());
         table.setDefaultRenderer(String.class, new StatusRenderer());
         table.getSelectionModel().addListSelectionListener(e -> {
@@ -115,7 +126,7 @@ public class ReviewPanel extends ToggleDialog {
                 if (row == null) {
                     return;
                 }
-                if (viewCol == PANO_COLUMN) {
+                if (table.convertColumnIndexToModel(viewCol) == PANO_COLUMN) {
                     openPanorama(row);
                 } else if (e.getClickCount() == 2) {
                     showOnMap(row);
@@ -138,15 +149,10 @@ public class ReviewPanel extends ToggleDialog {
         content.add(bottom, BorderLayout.SOUTH);
 
         checkButton.addActionListener(e -> checkArea());
+        checkButton.setToolTipText("Запросить магазины сетей для видимой области");
         fileButton.addActionListener(e -> loadFile());
-        panoButton.setEnabled(false);
-        panoButton.setToolTipText("Открыть панорамы у выбранного магазина");
-        panoButton.addActionListener(e -> {
-            ReviewTableModel.Row row = selectedRow();
-            if (row != null) {
-                openPanorama(row);
-            }
-        });
+        fileButton.setToolTipText("Загрузить точки из JSON, сохранённого в браузере "
+                + "(для Ozon, Wildberries и других сетей без открытого API)");
         applyButton.addActionListener(e -> applySelected());
 
         createLayout(content, false, Collections.emptyList());
@@ -203,7 +209,7 @@ public class ReviewPanel extends ToggleDialog {
                 SwingUtilities.invokeLater(() -> {
                     stores = fetched;
                     rebuild();
-                    status.setText("Проверено: " + fetched.size() + " магазинов сети");
+                    status.setText(foundText(fetched));
                     checkButton.setEnabled(true);
                     applyButton.setEnabled(true);
                 });
@@ -269,20 +275,117 @@ public class ReviewPanel extends ToggleDialog {
         return out;
     }
 
+    /** Ряд галочек под кнопками: какие сети проверять. */
+    private JPanel buildChainRow() {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        for (Profile profile : Profiles.all()) {
+            JCheckBox box = new JCheckBox(profile.name,
+                    org.openstreetmap.josm.tools.ImageProvider.get(iconFor(profile.id)));
+            box.setSelected(true);
+            box.setToolTipText("Проверять сеть «" + profile.name + "»");
+            box.addActionListener(e -> {
+                updateEnabledChains();
+                rebuild();
+            });
+            chainBoxes.put(profile.id, box);
+            enabledChains.add(profile.id);
+            row.add(box);
+        }
+        return row;
+    }
+
+    private void updateEnabledChains() {
+        enabledChains.clear();
+        for (Map.Entry<String, JCheckBox> e : chainBoxes.entrySet()) {
+            if (e.getValue().isSelected()) {
+                enabledChains.add(e.getKey());
+            }
+        }
+    }
+
+    private static String iconFor(String chainId) {
+        switch (chainId) {
+            case "magnit":
+                return "chain-magnit";
+            case "magnit-kosmetik":
+                return "chain-kosmetik";
+            case "pyaterochka":
+                return "chain-pyaterochka";
+            case "ozon":
+                return "chain-ozon";
+            case "ozon-box":
+                return "chain-ozon-box";
+            case "wildberries":
+                return "chain-wildberries";
+            default:
+                return "chainpoi";
+        }
+    }
+
     /** Пересобирает таблицу по уже загруженным данным сети, без обращения к сайту. */
     private void rebuild() {
         DataSet ds = editDataSet();
-        List<ReviewTableModel.Row> rows = new ArrayList<>();
+        List<Store> active = new ArrayList<>();
         for (Store s : stores) {
+            if (enabledChains.contains(s.chainId)) {
+                active.add(s);
+            }
+        }
+        List<ReviewTableModel.Row> rows = new ArrayList<>();
+        for (Store s : active) {
             rows.add(new ReviewTableModel.Row(s, Matcher.check(s, ds)));
         }
-        for (Match orphan : Matcher.orphans(stores, ds)) {
+        for (Match orphan : Matcher.orphans(active, ds)) {
             rows.add(new ReviewTableModel.Row(null, orphan));
         }
+        rows.sort(Comparator
+                .comparingInt((ReviewTableModel.Row r) -> r.reviewed ? 1 : 0)
+                .thenComparingInt(r -> rank(r.match)));
         model.setRows(rows);
         updateStatus();
         if (!rows.isEmpty() && table.getSelectedRow() < 0) {
             table.setRowSelectionInterval(0, 0);
+        }
+    }
+
+    /** «Найдено 14: Магнит 5, М.Косметик 4, Пятёрочка 5». */
+    private static String foundText(List<Store> found) {
+        Map<String, Integer> byChain = new LinkedHashMap<>();
+        for (Store s : found) {
+            byChain.merge(s.chainName, 1, Integer::sum);
+        }
+        StringBuilder sb = new StringBuilder("Найдено ").append(found.size());
+        if (!byChain.isEmpty()) {
+            sb.append(": ");
+            boolean first = true;
+            for (Map.Entry<String, Integer> e : byChain.entrySet()) {
+                if (!first) {
+                    sb.append(", ");
+                }
+                sb.append(e.getKey()).append(' ').append(e.getValue());
+                first = false;
+            }
+        }
+        return sb.toString();
+    }
+
+    private static int rank(Match m) {
+        if (m == null) {
+            return 5;
+        }
+        switch (m.status) {
+            case MISSING:
+                return 0;
+            case DIFF:
+                return 1;
+            case BAD:
+                return 2;
+            case ORPHAN:
+                return 3;
+            case OK:
+                return 4;
+            default:
+                return 5;
         }
     }
 
@@ -357,6 +460,7 @@ public class ReviewPanel extends ToggleDialog {
         }
         run(result);
         row.selected = false;
+        row.reviewed = true;
 
         if (row.store != null) {
             row.match = Matcher.check(row.store, ds);
@@ -515,7 +619,6 @@ public class ReviewPanel extends ToggleDialog {
     private void updateDetail() {
         ReviewTableModel.Row row = selectedRow();
         detail.setRow(row, editDataSet());
-        panoButton.setEnabled(row != null);
     }
 
     /** Правый клик по строке: панорамы и переход к объекту. */
@@ -638,6 +741,7 @@ public class ReviewPanel extends ToggleDialog {
         @Override
         public void onSkip(ReviewTableModel.Row row) {
             row.selected = false;
+            row.reviewed = true;
             model.fireTableDataChanged();
             moveToNextReview();
         }
@@ -650,6 +754,11 @@ public class ReviewPanel extends ToggleDialog {
         @Override
         public void onShow(ReviewTableModel.Row row) {
             showOnMap(row);
+        }
+
+        @Override
+        public void onPanorama(ReviewTableModel.Row row) {
+            openPanorama(row);
         }
 
         @Override

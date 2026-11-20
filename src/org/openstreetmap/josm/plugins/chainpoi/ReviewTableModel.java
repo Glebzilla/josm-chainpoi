@@ -21,6 +21,8 @@ public class ReviewTableModel extends AbstractTableModel {
         public final Store store;
         public Match match;
         public boolean selected;
+        /** Строку уже разобрали (приняли или пропустили) — уходит вниз списка. */
+        public boolean reviewed;
 
         public Row(Store store, Match match) {
             this.store = store;
@@ -63,7 +65,7 @@ public class ReviewTableModel extends AbstractTableModel {
         }
     }
 
-    private static final String[] COLUMNS = {"", "Статус", "Сеть", "м", "Объект OSM", "Пан."};
+    private static final String[] COLUMNS = {"", "Статус", "Сеть", "м", "Объект OSM", "Панорамы"};
 
     private final List<Row> rows = new ArrayList<>();
 
