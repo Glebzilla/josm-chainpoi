@@ -150,7 +150,7 @@ public class ReviewPanel extends ToggleDialog {
         applyButton.setPreferredSize(new java.awt.Dimension(140, 24));
         JPanel bottom = new JPanel(new BorderLayout(6, 0));
         bottom.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 4, 0, 0));
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
         left.add(applyButton);
         bottom.add(left, BorderLayout.WEST);
         hint.setForeground(BLUE);

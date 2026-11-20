@@ -101,7 +101,7 @@ public class ReviewDetailPanel extends JPanel {
         add(diffArea, BorderLayout.CENTER);
         this.diffArea = diffArea;
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2));
         buttons.add(prev);
         buttons.add(next);
         buttons.add(accept);
@@ -122,12 +122,18 @@ public class ReviewDetailPanel extends JPanel {
         panorama.setPreferredSize(new java.awt.Dimension(104, 24));
         prev.setPreferredSize(new java.awt.Dimension(36, 24));
         next.setPreferredSize(new java.awt.Dimension(36, 24));
-        prev.setMargin(new java.awt.Insets(0, 0, 0, 0));
-        next.setMargin(new java.awt.Insets(0, 0, 0, 0));
         accept.setPreferredSize(new java.awt.Dimension(92, 24));
         skip.setPreferredSize(new java.awt.Dimension(100, 24));
         show.setPreferredSize(new java.awt.Dimension(72, 24));
         close.setPreferredSize(new java.awt.Dimension(92, 24));
+        java.awt.Insets same = new java.awt.Insets(1, 4, 1, 4);
+        prev.setMargin(same);
+        next.setMargin(same);
+        accept.setMargin(same);
+        skip.setMargin(same);
+        show.setMargin(same);
+        panorama.setMargin(same);
+        close.setMargin(same);
 
         prev.addActionListener(e -> fireNavigate(-1));
         next.addActionListener(e -> fireNavigate(1));
