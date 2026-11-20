@@ -1,0 +1,586 @@
+package org.openstreetmap.josm.plugins.chainpoi;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableCellRenderer;
+
+import org.openstreetmap.josm.actions.JosmAction;
+import org.openstreetmap.josm.command.SequenceCommand;
+import org.openstreetmap.josm.data.Bounds;
+import org.openstreetmap.josm.data.UndoRedoHandler;
+import org.openstreetmap.josm.data.coor.LatLon;
+import org.openstreetmap.josm.data.osm.DataSet;
+import org.openstreetmap.josm.data.osm.OsmPrimitive;
+import org.openstreetmap.josm.gui.MainApplication;
+import org.openstreetmap.josm.gui.MapView;
+import org.openstreetmap.josm.gui.dialogs.ToggleDialog;
+import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.Shortcut;
+
+/**
+ * Панель «Сетевые магазины»: запрос данных сети, сверка с OSM, разбор по одному.
+ */
+public class ReviewPanel extends ToggleDialog {
+
+    private static final double MAX_AREA = 0.5;
+    /** Масштаб при переходе к магазину: ~220 м по высоте, а не «в упор», как JOSM для точки. */
+    private static final double POINT_SPAN_DEG = 0.002;
+
+    private static final Color RED = new Color(0xB0, 0x00, 0x20);
+    private static final Color ORANGE = new Color(0xB3, 0x5C, 0x00);
+    private static final Color GREEN = new Color(0x1B, 0x7A, 0x1B);
+    private static final Color VIOLET = new Color(0x6A, 0x3D, 0x9A);
+    private static final Color BLUE = new Color(0x1B, 0x5E, 0x9A);
+
+    private final ReviewTableModel model = new ReviewTableModel();
+    private final JTable table = new JTable(model);
+    private final JLabel status = new JLabel("Область ещё не проверялась");
+    private final JLabel hint = new JLabel(" ");
+    private final JButton checkButton = new JButton("Проверить видимую область");
+    private final JButton applyButton = new JButton("Применить отмеченные");
+    private final ReviewDetailPanel detail;
+    private final CheckAction checkAction;
+
+    private List<Store> stores = Collections.emptyList();
+
+    public ReviewPanel() {
+        super("Сетевые магазины", "chainpoi",
+                "Сверка магазинов торговых сетей с данными OSM", null, 460, true);
+        this.checkAction = new CheckAction(this);
+        this.detail = new ReviewDetailPanel(new DetailListener());
+
+        JPanel content = new JPanel(new BorderLayout(0, 4));
+
+        JPanel top = new JPanel(new BorderLayout(6, 0));
+        top.add(checkButton, BorderLayout.WEST);
+        top.add(status, BorderLayout.CENTER);
+        content.add(top, BorderLayout.NORTH);
+
+        table.setFillsViewportHeight(true);
+        table.setRowHeight(20);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        int[] widths = {26, 112, 150, 165, 44, 118};
+        for (int i = 0; i < widths.length; i++) {
+            table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
+        table.getColumnModel().getColumn(0).setMaxWidth(26);
+        table.getColumnModel().getColumn(4).setMaxWidth(46);
+        table.setDefaultRenderer(String.class, new StatusRenderer());
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                updateDetail();
+            }
+        });
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    ReviewTableModel.Row row = selectedRow();
+                    if (row != null) {
+                        showOnMap(row);
+                    }
+                }
+            }
+        });
+
+        JPanel center = new JPanel(new BorderLayout(0, 2));
+        center.add(new JScrollPane(table), BorderLayout.CENTER);
+        detail.setPreferredSize(new java.awt.Dimension(320, 205));
+        center.add(detail, BorderLayout.SOUTH);
+        content.add(center, BorderLayout.CENTER);
+
+        JPanel bottom = new JPanel(new BorderLayout(6, 0));
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        left.add(applyButton);
+        bottom.add(left, BorderLayout.WEST);
+        hint.setForeground(BLUE);
+        bottom.add(hint, BorderLayout.CENTER);
+        content.add(bottom, BorderLayout.SOUTH);
+
+        checkButton.addActionListener(e -> checkArea());
+        applyButton.addActionListener(e -> applySelected());
+
+        createLayout(content, false, Collections.emptyList());
+        updateStatus();
+    }
+
+    public CheckAction getCheckAction() {
+        return checkAction;
+    }
+
+    // ------------------------------------------------------------------
+    // сверка
+    // ------------------------------------------------------------------
+
+    public void checkArea() {
+        if (MainApplication.getMap() == null) {
+            status.setText("Карта не открыта");
+            return;
+        }
+        MapView mv = MainApplication.getMap().mapView;
+        Bounds bounds = mv.getRealBounds();
+        if (bounds == null) {
+            status.setText("Не удалось определить область");
+            return;
+        }
+        double area = (bounds.getMaxLat() - bounds.getMinLat())
+                * (bounds.getMaxLon() - bounds.getMinLon());
+        if (area > MAX_AREA) {
+            status.setText("Область слишком большая — приблизьте карту");
+            return;
+        }
+
+        DataSet ds = editDataSet();
+        if (ds == null) {
+            status.setText("Сначала загрузите данные OSM");
+            return;
+        }
+
+        checkButton.setEnabled(false);
+        applyButton.setEnabled(false);
+        status.setText("Запрос к Магниту…");
+
+        Bounds query = bounds;
+        new Thread(() -> {
+            try {
+                List<Store> fetched = new MagnitProvider().fetch(query);
+                SwingUtilities.invokeLater(() -> {
+                    stores = fetched;
+                    rebuild();
+                    status.setText("Проверено: " + fetched.size() + " магазинов сети");
+                    checkButton.setEnabled(true);
+                    applyButton.setEnabled(true);
+                });
+            } catch (Exception ex) {
+                Logging.error(ex);
+                SwingUtilities.invokeLater(() -> {
+                    status.setText("Ошибка: " + ex.getMessage());
+                    checkButton.setEnabled(true);
+                    applyButton.setEnabled(true);
+                });
+            }
+        }, "chainpoi-fetch").start();
+    }
+
+    /** Пересобирает таблицу по уже загруженным данным сети, без обращения к сайту. */
+    private void rebuild() {
+        DataSet ds = editDataSet();
+        List<ReviewTableModel.Row> rows = new ArrayList<>();
+        for (Store s : stores) {
+            rows.add(new ReviewTableModel.Row(s, Matcher.check(s, ds)));
+        }
+        for (Match orphan : Matcher.orphans(stores, ds)) {
+            rows.add(new ReviewTableModel.Row(null, orphan));
+        }
+        model.setRows(rows);
+        updateStatus();
+        if (!rows.isEmpty() && table.getSelectedRow() < 0) {
+            table.setRowSelectionInterval(0, 0);
+        }
+    }
+
+    private void updateStatus() {
+        int missing = 0;
+        int diff = 0;
+        int bad = 0;
+        int ok = 0;
+        int orphan = 0;
+        for (ReviewTableModel.Row r : model.getRows()) {
+            if (r.match == null) {
+                continue;
+            }
+            switch (r.match.status) {
+                case MISSING:
+                    missing++;
+                    break;
+                case DIFF:
+                    diff++;
+                    break;
+                case BAD:
+                    bad++;
+                    break;
+                case OK:
+                    ok++;
+                    break;
+                case ORPHAN:
+                    orphan++;
+                    break;
+                default:
+                    break;
+            }
+        }
+        status.setText("Всего " + model.getRows().size()
+                + ": нет в OSM " + missing + ", расхождения " + diff
+                + ", ошибки " + bad + ", ок " + ok + ", нет в сети " + orphan);
+    }
+
+    // ------------------------------------------------------------------
+    // применение
+    // ------------------------------------------------------------------
+
+    private void applySelected() {
+        DataSet ds = editDataSet();
+        if (ds == null) {
+            return;
+        }
+        Applier.Result result = Applier.build(ds, model.getRows());
+        if (result.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Нечего применять.",
+                    "Сетевые магазины", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (JOptionPane.showConfirmDialog(this, planText(result), "Сетевые магазины",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE) != JOptionPane.OK_OPTION) {
+            return;
+        }
+        run(result);
+        rebuild();
+    }
+
+    /** Применяет одну строку — кнопка «Принять» в панели деталей. */
+    private void applyRow(ReviewTableModel.Row row) {
+        DataSet ds = editDataSet();
+        if (ds == null) {
+            return;
+        }
+        Applier.Result result = Applier.buildRow(ds, row);
+        if (result.isEmpty()) {
+            hint.setText("Нечего применять.");
+            return;
+        }
+        run(result);
+        row.selected = false;
+
+        if (row.store != null) {
+            row.match = Matcher.check(row.store, ds);
+        } else if (result.closed > 0) {
+            model.getRows().remove(row);
+        }
+        model.fireTableDataChanged();
+        updateStatus();
+        selectRow(row);
+        updateDetail();
+        moveToNextReview();
+    }
+
+    private void run(Applier.Result result) {
+        UndoRedoHandler.getInstance().add(new SequenceCommand(summary(result), result.commands));
+        DataSet ds = editDataSet();
+        if (ds != null && !result.touched.isEmpty()) {
+            ds.setSelected(result.touched);
+        }
+        showReminder(result);
+    }
+
+    private String summary(Applier.Result r) {
+        StringBuilder sb = new StringBuilder("Сетевые магазины");
+        if (r.created > 0) {
+            sb.append(": создано ").append(r.created);
+        }
+        if (r.updated > 0) {
+            sb.append(": дополнено ").append(r.updated);
+        }
+        if (r.closed > 0) {
+            sb.append(": закрыто ").append(r.closed);
+        }
+        return sb.toString();
+    }
+
+    private void showReminder(Applier.Result r) {
+        String ref = r.touched.isEmpty() ? "" : ReviewTableModel.ref(r.touched.get(0));
+        if ("новый".equals(ref)) {
+            ref = "новая точка";
+        }
+        String text;
+        if (r.created > 0) {
+            text = "Создано: " + ref + ". Точка стоит по координатам сети — проверьте положение, "
+                    + "её можно перетащить мышью.";
+        } else if (r.closed > 0) {
+            text = "Отмечено закрытым: " + ref + ".";
+        } else {
+            text = "Изменено: " + ref + ". Объект выделен на карте.";
+        }
+        hint.setText("<html><body style='width:300px'>" + text + "</body></html>");
+        hint.setForeground(BLUE);
+    }
+
+    /** Что именно будет сделано — для окна подтверждения. */
+    private String planText(Applier.Result r) {
+        StringBuilder sb = new StringBuilder("<html><body style='width:420px'>");
+        if (r.created > 0) {
+            sb.append("Создать точек: ").append(r.created).append("<br>");
+        }
+        if (r.updated > 0) {
+            sb.append("Дополнить объектов: ").append(r.updated).append("<br>");
+        }
+        if (r.closed > 0) {
+            sb.append("Закрыть магазинов: ").append(r.closed).append("<br>");
+        }
+        sb.append("<br>");
+        int shown = 0;
+        for (ReviewTableModel.Row row : model.getRows()) {
+            if (!row.selected || row.match == null || !row.match.canApply()) {
+                continue;
+            }
+            if (shown >= 12) {
+                sb.append("…<br>");
+                break;
+            }
+            sb.append("• ").append(row.title());
+            if (row.match.status == Match.Status.MISSING) {
+                sb.append(" — создать точку");
+            } else if (row.match.status == Match.Status.ORPHAN) {
+                sb.append(" — закрылся?");
+            } else {
+                List<String> keys = new ArrayList<>();
+                for (FieldDiff d : row.match.diffs) {
+                    if (d.accepted) {
+                        keys.add(d.key);
+                    }
+                }
+                if (!keys.isEmpty()) {
+                    sb.append(" — ").append(String.join(", ", keys));
+                }
+            }
+            sb.append("<br>");
+            shown++;
+        }
+        sb.append("<br>Применить? Загрузку на сервер делаете сами.</body></html>");
+        return sb.toString();
+    }
+
+    // ------------------------------------------------------------------
+    // навигация
+    // ------------------------------------------------------------------
+
+    private ReviewTableModel.Row selectedRow() {
+        int viewRow = table.getSelectedRow();
+        if (viewRow < 0) {
+            return null;
+        }
+        int index = table.convertRowIndexToModel(viewRow);
+        return model.getRow(index);
+    }
+
+    private void selectRow(ReviewTableModel.Row row) {
+        for (int i = 0; i < model.getRows().size(); i++) {
+            if (model.getRows().get(i) == row) {
+                table.setRowSelectionInterval(i, i);
+                table.scrollRectToVisible(table.getCellRect(i, 0, true));
+                return;
+            }
+        }
+    }
+
+    private void moveSelection(int delta) {
+        int size = model.getRows().size();
+        if (size == 0) {
+            return;
+        }
+        int current = table.getSelectedRow();
+        int next = Math.max(0, Math.min(size - 1, current < 0 ? 0 : current + delta));
+        table.setRowSelectionInterval(next, next);
+        table.scrollRectToVisible(table.getCellRect(next, 0, true));
+    }
+
+    private void moveToNextReview() {
+        int size = model.getRows().size();
+        if (size == 0) {
+            return;
+        }
+        int start = Math.max(0, table.getSelectedRow());
+        for (int step = 1; step <= size; step++) {
+            int i = (start + step) % size;
+            ReviewTableModel.Row row = model.getRows().get(i);
+            if (row.match != null && needsAttention(row.match)) {
+                table.setRowSelectionInterval(i, i);
+                table.scrollRectToVisible(table.getCellRect(i, 0, true));
+                return;
+            }
+        }
+    }
+
+    private static boolean needsAttention(Match m) {
+        return m.status == Match.Status.MISSING || m.status == Match.Status.DIFF
+                || m.status == Match.Status.BAD || m.status == Match.Status.ORPHAN;
+    }
+
+    private void updateDetail() {
+        detail.setRow(selectedRow(), editDataSet());
+    }
+
+    private void showOnMap(ReviewTableModel.Row row) {
+        if (MainApplication.getMap() == null || row == null || row.match == null) {
+            return;
+        }
+        DataSet ds = editDataSet();
+        OsmPrimitive p = row.match.primitive;
+        LatLon center;
+        double span;
+        if (p != null) {
+            org.openstreetmap.josm.data.osm.BBox bb = p.getBBox();
+            center = bb.getCenter();
+            double objectSize = Math.max(bb.getHeight(), bb.getWidth());
+            span = Math.max(POINT_SPAN_DEG, objectSize * 3);
+            if (ds != null) {
+                ds.setSelected(p);
+            }
+        } else if (row.store != null) {
+            center = new LatLon(row.store.lat, row.store.lon);
+            span = POINT_SPAN_DEG;
+        } else {
+            return;
+        }
+        if (center == null) {
+            return;
+        }
+        MainApplication.getMap().mapView.zoomTo(new Bounds(center, span, span));
+    }
+
+    private static DataSet editDataSet() {
+        return MainApplication.getLayerManager().getEditDataSet();
+    }
+
+    /**
+     * Открывает Яндекс.Карты со слоем панорам у магазина (как букмарклет).
+     *
+     * <p>Смотреть карту можно, но брать из неё данные нельзя: по правилам OSM
+     * использовать разрешено только фотографии панорам — без подложки,
+     * адресных меток и спутниковых снимков.
+     */
+    private void openPanorama(ReviewTableModel.Row row) {
+        if (row == null || row.match == null) {
+            return;
+        }
+        LatLon c = null;
+        if (row.match.primitive != null) {
+            c = row.match.primitive.getBBox().getCenter();
+        }
+        if (c == null && row.store != null) {
+            c = new LatLon(row.store.lat, row.store.lon);
+        }
+        if (c == null) {
+            return;
+        }
+        String point = String.format(java.util.Locale.ROOT, "%.6f,%.6f", c.lon(), c.lat());
+        // Как в букмарклете: спутник + слой панорам, центр на магазине.
+        // Карта нужна только чтобы дойти до панорамы, данные с неё не берём.
+        String url = "https://yandex.ru/maps/?l=sat%2Cskl%2Cstv%2Csta&ll=" + point + "&z=18";
+        String error = org.openstreetmap.josm.tools.OpenBrowser.displayUrl(url);
+        if (error != null) {
+            hint.setText("Не удалось открыть браузер: " + error);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // вспомогательное
+    // ------------------------------------------------------------------
+
+    private final class DetailListener implements ReviewDetailPanel.Listener {
+        @Override
+        public void onAccept(ReviewTableModel.Row row) {
+            applyRow(row);
+        }
+
+        @Override
+        public void onSkip(ReviewTableModel.Row row) {
+            row.selected = false;
+            model.fireTableDataChanged();
+            moveToNextReview();
+        }
+
+        @Override
+        public void onNavigate(int delta) {
+            moveSelection(delta);
+        }
+
+        @Override
+        public void onShow(ReviewTableModel.Row row) {
+            showOnMap(row);
+        }
+
+        @Override
+        public void onPanorama(ReviewTableModel.Row row) {
+            openPanorama(row);
+        }
+
+        @Override
+        public void onClose(ReviewTableModel.Row row) {
+            applyRow(row);
+        }
+    }
+
+    /** Красит статус по смыслу. */
+    private final class StatusRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, column);
+            c.setForeground(isSelected ? t.getSelectionForeground() : t.getForeground());
+            if (!isSelected && column == 1) {
+                ReviewTableModel.Row r = model.getRow(t.convertRowIndexToModel(row));
+                if (r != null && r.match != null) {
+                    switch (r.match.status) {
+                        case MISSING:
+                            c.setForeground(RED);
+                            break;
+                        case DIFF:
+                            c.setForeground(ORANGE);
+                            break;
+                        case BAD:
+                            c.setForeground(RED);
+                            break;
+                        case OK:
+                            c.setForeground(GREEN);
+                            break;
+                        case ORPHAN:
+                            c.setForeground(VIOLET);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+            return c;
+        }
+    }
+
+    /**
+     * Пункт меню «Данные → Проверить сетевые магазины».
+     */
+    public static final class CheckAction extends JosmAction {
+        private final transient ReviewPanel panel;
+
+        CheckAction(ReviewPanel panel) {
+            super("Проверить сетевые магазины", "chainpoi",
+                    "Запросить магазины сети для видимой области",
+                    Shortcut.registerShortcut("tools:chainpoi:check",
+                            "Инструменты: проверить сетевые магазины",
+                            KeyEvent.VK_F9, Shortcut.CTRL_SHIFT), true);
+            this.panel = panel;
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            panel.showDialog();
+            panel.checkArea();
+        }
+    }
+}

@@ -1,0 +1,16 @@
+# Сборка
+build/
+out/
+
+# Тесты
+test/out/
+test/report.txt
+test/*.png
+
+# Готовый плагин — прикладывается к релизу, в историю не нужен
+*.jar
+
+# Среда
+.idea/
+*.iml
+.vscode/

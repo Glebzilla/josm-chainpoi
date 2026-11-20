@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Plugin-Class: org.openstreetmap.josm.plugins.chainpoi.ChainPoiPlugin
+Plugin-Description: Review chain store data against OSM (Magnit, ...)
+Plugin-Version: 0.1.0
+Plugin-Mainversion: 19044
+Plugin-MinimumJavaVersion: 17
+Plugin-Canloadatruntime: true
+Plugin-Icon: images/dialogs/chainpoi.png
+Author: Gleb
