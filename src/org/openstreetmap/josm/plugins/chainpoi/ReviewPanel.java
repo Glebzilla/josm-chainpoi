@@ -71,9 +71,16 @@ public class ReviewPanel extends ToggleDialog {
     private final ReviewDetailPanel detail;
     private final CheckAction checkAction;
 
+    /** Сети, для которых есть прямой источник данных. */
+    private static final Set<String> DIRECT_CHAINS = Set.of(
+            "magnit", "magnit-kosmetik", "pyaterochka");
+
+    /** Сети, загруженные из файла (для них переключателя нет). */
+    private final Set<String> fileChains = new LinkedHashSet<>();
+    private final Set<String> enabledChains = new LinkedHashSet<>();
+
     /** Переключатели сетей: нажатая кнопка — сеть проверяется. */
     private final Map<String, JToggleButton> chainBoxes = new LinkedHashMap<>();
-    private final Set<String> enabledChains = new LinkedHashSet<>();
 
     private List<Store> stores = Collections.emptyList();
 
@@ -140,8 +147,10 @@ public class ReviewPanel extends ToggleDialog {
         center.add(detail, BorderLayout.SOUTH);
         content.add(center, BorderLayout.CENTER);
 
+        applyButton.setPreferredSize(new java.awt.Dimension(140, 24));
         JPanel bottom = new JPanel(new BorderLayout(6, 0));
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        bottom.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 4, 0, 0));
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         left.add(applyButton);
         bottom.add(left, BorderLayout.WEST);
         hint.setForeground(BLUE);
@@ -234,6 +243,11 @@ public class ReviewPanel extends ToggleDialog {
         }
         try {
             PoiFile file = PoiFile.read(chooser.getSelectedFile().toPath());
+            fileChains.clear();
+            for (Store s : file.stores) {
+                fileChains.add(s.chainId);
+            }
+            updateEnabledChains();
             List<Store> inView = filterToView(file.stores);
             if (inView.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
@@ -280,6 +294,16 @@ public class ReviewPanel extends ToggleDialog {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         for (Profile profile : Profiles.all()) {
             javax.swing.Icon icon = org.openstreetmap.josm.tools.ImageProvider.get(iconFor(profile.id));
+            if (!DIRECT_CHAINS.contains(profile.id)) {
+                javax.swing.JLabel hintLabel = new javax.swing.JLabel(profile.name, greyIcon(icon),
+                        javax.swing.SwingConstants.LEADING);
+                hintLabel.setForeground(new java.awt.Color(0x99, 0x99, 0x99));
+                hintLabel.setIconTextGap(4);
+                hintLabel.setToolTipText("В разработке: источника данных пока нет — "
+                        + "только импорт из файла");
+                row.add(hintLabel);
+                continue;
+            }
             JToggleButton box = new JToggleButton(profile.name, icon);
             box.putClientProperty("icon-on", icon);
             box.putClientProperty("icon-off", greyIcon(icon));
@@ -324,6 +348,7 @@ public class ReviewPanel extends ToggleDialog {
                 enabledChains.add(e.getKey());
             }
         }
+        enabledChains.addAll(fileChains);
     }
 
     private static String iconFor(String chainId) {
