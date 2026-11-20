@@ -90,7 +90,7 @@ public class ReviewPanel extends ToggleDialog {
         this.checkAction = new CheckAction(this);
         this.detail = new ReviewDetailPanel(new DetailListener());
 
-        JPanel content = new JPanel(new BorderLayout(0, 4));
+        JPanel content = new JPanel(new BorderLayout(0, 2));
 
         JPanel top = new JPanel(new BorderLayout(6, 0));
         JPanel topButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));

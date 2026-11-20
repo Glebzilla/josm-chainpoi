@@ -66,7 +66,7 @@ public class ReviewDetailPanel extends JPanel {
     public ReviewDetailPanel(Listener listener) {
         super(new BorderLayout(0, 2));
         this.listener = listener;
-        setBorder(BorderFactory.createEmptyBorder(4, 4, 2, 4));
+        setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
 
         title.setFont(title.getFont().deriveFont(Font.BOLD));
         info.setFont(info.getFont().deriveFont(Font.PLAIN, info.getFont().getSize2D() - 1f));
@@ -101,7 +101,7 @@ public class ReviewDetailPanel extends JPanel {
         add(diffArea, BorderLayout.CENTER);
         this.diffArea = diffArea;
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
         buttons.add(prev);
         buttons.add(next);
         buttons.add(accept);
