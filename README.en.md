@@ -184,6 +184,10 @@ JDK and jar paths are set at the top of `build.ps1`.
 
 ## Install
 
+Ready-made archives are in the [release](https://github.com/Glebzilla/josm-chainpoi/releases):
+`chainpoi-0.1.0-windows.zip` for Windows and `chainpoi-0.1.0-macos-linux.zip`
+for macOS and Linux. Each contains the jar, the install script and short notes.
+
 **JOSM must be closed**: otherwise it overwrites `preferences.xml` on exit.
 The plugin lives in JOSM's settings directory, which differs per system:
 

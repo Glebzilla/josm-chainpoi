@@ -183,6 +183,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1
 
 ## Установка
 
+Готовые сборки — в [релизе](https://github.com/Glebzilla/josm-chainpoi/releases):
+`chainpoi-0.1.0-windows.zip` для Windows и `chainpoi-0.1.0-macos-linux.zip`
+для macOS и Linux. Внутри jar, скрипт установки и короткая инструкция.
+
 **JOSM должен быть закрыт**: иначе он перезапишет `preferences.xml` при выходе.
 Плагин лежит в каталоге настроек JOSM — он разный по системам:
 
