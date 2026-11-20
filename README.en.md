@@ -1,6 +1,6 @@
 # chainpoi — chain stores in JOSM
 
-[Русская версия](README.md)
+[Русский](README.md) | **English**
 
 The plugin checks chain stores against OSM data: what is missing, which tags
 differ, and (per checkbox) creates objects in the current layer.
