@@ -967,12 +967,6 @@ public class ReviewPanel extends ToggleDialog {
             c = new LatLon(store.lat, store.lon);
         }
 
-        if (store != null && ("magnit".equals(store.chainId)
-                || "magnit-kosmetik".equals(store.chainId))) {
-            addLink(menu, "Магнит: магазины", "https://magnit.ru/shops");
-            menu.addSeparator();
-        }
-
         if (c != null) {
             String point = c.lon() + "," + c.lat();
             addLink(menu, "Яндекс.Карты", "https://yandex.ru/maps/?ll=" + point
