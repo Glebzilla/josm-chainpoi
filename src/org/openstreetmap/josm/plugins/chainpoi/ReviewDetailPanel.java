@@ -49,7 +49,6 @@ public class ReviewDetailPanel extends JPanel {
     private final JLabel info = new JLabel(" ");
     private final JLabel note = new JLabel(" ");
     private final JLabel warnings = new JLabel(" ");
-    private final JLabel applied = new JLabel(" ");
     private final DiffModel diffModel = new DiffModel();
     private final JTable diffTable = new JTable(diffModel);
     private final JLabel noDiffs = new JLabel("Расхождений нет");
@@ -108,10 +107,6 @@ public class ReviewDetailPanel extends JPanel {
         note.setForeground(new java.awt.Color(0x66, 0x66, 0x66));
         head.add(note);
         head.add(warnings);
-        applied.setFont(applied.getFont().deriveFont(Font.PLAIN, applied.getFont().getSize2D() - 1f));
-        applied.setForeground(new java.awt.Color(0x2E, 0x6B, 0x2E));
-        applied.setAlignmentX(0f);
-        head.add(applied);
         add(head, BorderLayout.NORTH);
 
         diffTable.setTableHeader(null);
@@ -285,12 +280,11 @@ public class ReviewDetailPanel extends JPanel {
             warnings.setText("<html><body style='width:300px;color:#b35c00'>"
                     + escape(String.join("; ", m.warnings)) + "</body></html>");
         }
-        showApplied(row);
 
         boolean showDiffCheckbox = m.status == Match.Status.DIFF || m.status == Match.Status.BAD
                 || (m.status == Match.Status.OTHER_FORMAT && !m.diffs.isEmpty());
         List<FieldDiff> fields = displayDiffs(row);
-        diffModel.set(fields, showDiffCheckbox);
+        diffModel.set(fields, showDiffCheckbox, !row.applied.isEmpty());
         boolean hasFields = !fields.isEmpty();
         diffCards.show(diffArea, hasFields ? CARD_TABLE : CARD_NONE);
         if (m.status == Match.Status.OK) {
@@ -310,28 +304,6 @@ public class ReviewDetailPanel extends JPanel {
         repaint();
     }
 
-    /** Что уже применили: старые значения зачёркнуты. */
-    private void showApplied(ReviewTableModel.Row row) {
-        if (row == null || row.applied.isEmpty()) {
-            applied.setText(" ");
-            applied.setVisible(false);
-            return;
-        }
-        StringBuilder sb = new StringBuilder("<html><body style='width:320px'>Применено:");
-        for (FieldDiff d : row.applied) {
-            sb.append("<br>").append(escape(d.key)).append(": ");
-            if (d.osmValue != null) {
-                sb.append("<strike>").append(escape(d.osmValue)).append("</strike> → ");
-            } else {
-                sb.append("добавлено ");
-            }
-            sb.append(escape(d.chainText()));
-        }
-        sb.append("</body></html>");
-        applied.setText(sb.toString());
-        applied.setVisible(true);
-    }
-
     public void clear() {
         row = null;
         title.setText("Магазин не выбран");
@@ -342,9 +314,7 @@ public class ReviewDetailPanel extends JPanel {
         note.setText(" ");
         note.setVisible(false);
         warnings.setText(" ");
-        applied.setText(" ");
-        applied.setVisible(false);
-        diffModel.set(new ArrayList<>(), false);
+        diffModel.set(new ArrayList<>(), false, false);
         diffCards.show(diffArea, CARD_NONE);
         noDiffs.setText("Выберите строку в таблице");
         accept.setEnabled(false);
@@ -372,6 +342,10 @@ public class ReviewDetailPanel extends JPanel {
     private static List<FieldDiff> displayDiffs(ReviewTableModel.Row row) {
         List<FieldDiff> out = new ArrayList<>();
         Match m = row.match;
+        if (row.applied != null && !row.applied.isEmpty()) {
+            out.addAll(row.applied);
+            return out;
+        }
         if (m.status == Match.Status.MISSING && row.store != null) {
             for (Map.Entry<String, String> e : Matcher.tagsForCreate(row.store).entrySet()) {
                 out.add(new FieldDiff(e.getKey(), null, e.getValue(), FieldDiff.Kind.MISSING));
@@ -410,10 +384,13 @@ public class ReviewDetailPanel extends JPanel {
         private static final String[] COLUMNS = {"", "поле", "в OSM", "у сети"};
         private List<FieldDiff> rows = new ArrayList<>();
         private boolean editable;
+        /** Значения уже применены: старое значение в OSM зачёркнуто. */
+        private boolean applied;
 
-        void set(List<FieldDiff> list, boolean editable) {
+        void set(List<FieldDiff> list, boolean editable, boolean applied) {
             this.rows = list == null ? new ArrayList<>() : list;
             this.editable = editable;
+            this.applied = applied;
             fireTableDataChanged();
         }
 
@@ -451,6 +428,9 @@ public class ReviewDetailPanel extends JPanel {
                 case 1:
                     return d.key;
                 case 2:
+                    if (applied && d.osmValue != null) {
+                        return "<html><strike>" + escape(d.osmText()) + "</strike></html>";
+                    }
                     return d.osmText();
                 default:
                     return d.chainText();
