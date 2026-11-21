@@ -893,11 +893,11 @@ public class ReviewPanel extends ToggleDialog {
         mv.zoomTo(new Bounds(c, spanLat, spanLon));
     }
 
+    /** Переход к магазину: только центрирование и масштаб, без выделения. */
     private void showOnMap(ReviewTableModel.Row row) {
         if (MainApplication.getMap() == null || row == null || row.match == null) {
             return;
         }
-        DataSet ds = editDataSet();
         OsmPrimitive p = row.match.primitive;
         LatLon center;
         double span;
@@ -906,9 +906,6 @@ public class ReviewPanel extends ToggleDialog {
             center = bb.getCenter();
             double objectSize = Math.max(bb.getHeight(), bb.getWidth());
             span = Math.max(POINT_SPAN_DEG, objectSize * 3);
-            if (ds != null) {
-                ds.setSelected(p);
-            }
         } else if (row.store != null) {
             center = new LatLon(row.store.lat, row.store.lon);
             span = POINT_SPAN_DEG;

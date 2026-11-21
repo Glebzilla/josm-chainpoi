@@ -36,9 +36,10 @@ and **Pyaterochka** (source: the chain's job vacancy database).
 5. Selecting a row shows the details below: full address (small font), OSM
    object, distance, warnings and the list of fields **"in OSM → chain"** with a
    checkbox per change (all checked).
-   The object is selected on the map; if it is out of view, the map pans to it
-   without changing the scale. Double-click or the **Map** button centre it and
-   set a scale of about 80 m, so the building is clearly visible.
+   The object is not selected on the map. Double-click or the **Map** button
+   centre it and set a scale of about 80 m, so the building is clearly visible;
+   **Select on map** in the row context menu selects the object without changing
+   the scale.
 6. Buttons: `◀` `▶` — navigate, **Accept** — apply to this object,
    **Skip**, **Map** — centre, **Closed** (for `not in chain data` rows).
    **Panoramas** — an icon in every table row and a button in the details:
