@@ -23,6 +23,8 @@ public class ReviewTableModel extends AbstractTableModel {
         public boolean selected;
         /** Строку уже разобрали (приняли или пропустили) — уходит вниз списка. */
         public boolean reviewed;
+        /** Что уже применили: старые и новые значения для зачёркивания. */
+        public final List<FieldDiff> applied = new ArrayList<>();
 
         public Row(Store store, Match match) {
             this.store = store;

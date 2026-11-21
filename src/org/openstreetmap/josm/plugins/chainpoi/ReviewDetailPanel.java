@@ -38,13 +38,18 @@ public class ReviewDetailPanel extends JPanel {
         void onPanorama(ReviewTableModel.Row row);
 
         void onClose(ReviewTableModel.Row row);
+
+        void onLinks(ReviewTableModel.Row row, java.awt.Component anchor);
     }
 
     private final transient Listener listener;
     private final JLabel title = new JLabel(" ");
+    private final JLabel codeLink = new JLabel();
+    private final JLabel suffix = new JLabel(" ");
     private final JLabel info = new JLabel(" ");
     private final JLabel note = new JLabel(" ");
     private final JLabel warnings = new JLabel(" ");
+    private final JLabel applied = new JLabel(" ");
     private final DiffModel diffModel = new DiffModel();
     private final JTable diffTable = new JTable(diffModel);
     private final JLabel noDiffs = new JLabel("Расхождений нет");
@@ -77,12 +82,36 @@ public class ReviewDetailPanel extends JPanel {
         info.setAlignmentX(0f);
         note.setAlignmentX(0f);
         warnings.setAlignmentX(0f);
-        head.add(title);
+
+        JPanel titleLine = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 0, 0));
+        titleLine.setOpaque(false);
+        titleLine.setAlignmentX(0f);
+        codeLink.setFont(title.getFont());
+        codeLink.setForeground(new java.awt.Color(0x1B, 0x5E, 0x9A));
+        codeLink.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        codeLink.setToolTipText("Ссылки на этот магазин");
+        codeLink.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (row != null && javax.swing.SwingUtilities.isLeftMouseButton(e)) {
+                    listener.onLinks(row, codeLink);
+                }
+            }
+        });
+        suffix.setFont(title.getFont());
+        titleLine.add(title);
+        titleLine.add(codeLink);
+        titleLine.add(suffix);
+        head.add(titleLine);
         head.add(info);
         note.setFont(note.getFont().deriveFont(Font.PLAIN, note.getFont().getSize2D() - 2f));
         note.setForeground(new java.awt.Color(0x66, 0x66, 0x66));
         head.add(note);
         head.add(warnings);
+        applied.setFont(applied.getFont().deriveFont(Font.PLAIN, applied.getFont().getSize2D() - 1f));
+        applied.setForeground(new java.awt.Color(0x2E, 0x6B, 0x2E));
+        applied.setAlignmentX(0f);
+        head.add(applied);
         add(head, BorderLayout.NORTH);
 
         diffTable.setTableHeader(null);
@@ -179,15 +208,24 @@ public class ReviewDetailPanel extends JPanel {
             return;
         }
         Match m = row.match;
-        String head = row.title() + (row.store != null && !row.store.code.isEmpty()
-                ? " · " + row.store.code : "");
+        title.setText(row.title());
+        String code = row.store != null && row.store.code != null ? row.store.code.trim() : "";
+        if (!code.isEmpty()) {
+            codeLink.setText("<html><u>&nbsp;· " + escape(code) + "</u></html>");
+            codeLink.setVisible(true);
+        } else {
+            codeLink.setText("");
+            codeLink.setVisible(false);
+        }
+        String tail = "";
         if (m.status == Match.Status.OTHER_FORMAT && m.primitive != null) {
             String osmName = m.primitive.get("name");
             if (osmName != null && !osmName.isEmpty()) {
-                head += " → «" + osmName + "» в OSM";
+                tail = " → «" + osmName + "» в OSM";
             }
         }
-        title.setText(head);
+        suffix.setText(tail);
+        suffix.setVisible(!tail.isEmpty());
 
         StringBuilder sb = new StringBuilder(row.address());
         String ref = ReviewTableModel.ref(m.primitive);
@@ -247,6 +285,7 @@ public class ReviewDetailPanel extends JPanel {
             warnings.setText("<html><body style='width:300px;color:#b35c00'>"
                     + escape(String.join("; ", m.warnings)) + "</body></html>");
         }
+        showApplied(row);
 
         boolean showDiffCheckbox = m.status == Match.Status.DIFF || m.status == Match.Status.BAD
                 || (m.status == Match.Status.OTHER_FORMAT && !m.diffs.isEmpty());
@@ -271,13 +310,40 @@ public class ReviewDetailPanel extends JPanel {
         repaint();
     }
 
+    /** Что уже применили: старые значения зачёркнуты. */
+    private void showApplied(ReviewTableModel.Row row) {
+        if (row == null || row.applied.isEmpty()) {
+            applied.setText(" ");
+            applied.setVisible(false);
+            return;
+        }
+        StringBuilder sb = new StringBuilder("<html><body style='width:320px'>Применено:");
+        for (FieldDiff d : row.applied) {
+            sb.append("<br>").append(escape(d.key)).append(": ");
+            if (d.osmValue != null) {
+                sb.append("<strike>").append(escape(d.osmValue)).append("</strike> → ");
+            } else {
+                sb.append("добавлено ");
+            }
+            sb.append(escape(d.chainText()));
+        }
+        sb.append("</body></html>");
+        applied.setText(sb.toString());
+        applied.setVisible(true);
+    }
+
     public void clear() {
         row = null;
         title.setText("Магазин не выбран");
+        codeLink.setVisible(false);
+        suffix.setText(" ");
+        suffix.setVisible(false);
         info.setText("Выберите строку в таблице");
         note.setText(" ");
         note.setVisible(false);
         warnings.setText(" ");
+        applied.setText(" ");
+        applied.setVisible(false);
         diffModel.set(new ArrayList<>(), false);
         diffCards.show(diffArea, CARD_NONE);
         noDiffs.setText("Выберите строку в таблице");

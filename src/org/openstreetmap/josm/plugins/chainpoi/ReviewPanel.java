@@ -143,7 +143,8 @@ public class ReviewPanel extends ToggleDialog {
                 if (row == null) {
                     return;
                 }
-                if (table.convertColumnIndexToModel(viewCol) == PANO_COLUMN) {
+                int modelCol = table.convertColumnIndexToModel(viewCol);
+                if (modelCol == PANO_COLUMN) {
                     openPanorama(row);
                 } else if (e.getClickCount() == 2) {
                     showOnMap(row);
@@ -540,6 +541,14 @@ public class ReviewPanel extends ToggleDialog {
             return;
         }
         noteSources(ds, List.of(row));
+        row.applied.clear();
+        if (row.match != null) {
+            for (FieldDiff d : row.match.diffs) {
+                if (d.accepted) {
+                    row.applied.add(d);
+                }
+            }
+        }
         run(result);
         row.selected = false;
         row.reviewed = true;
@@ -845,12 +854,22 @@ public class ReviewPanel extends ToggleDialog {
         return items;
     }
 
+    private javax.swing.JMenuItem newMenuItem(String text) {
+        javax.swing.JMenuItem item = new javax.swing.JMenuItem(text);
+        item.setFont(item.getFont().deriveFont(10f));
+        item.setMargin(new java.awt.Insets(0, 6, 0, 6));
+        java.awt.Dimension pref = item.getPreferredSize();
+        item.setPreferredSize(new java.awt.Dimension(
+                Math.max(150, pref.width), 16));
+        return item;
+    }
+
     private javax.swing.JPopupMenu buildRowMenu(ReviewTableModel.Row row) {
         javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu();
         List<PieMenu.Item> items = rowItems(row);
         for (int i = 0; i < items.size(); i++) {
             PieMenu.Item item = items.get(i);
-            javax.swing.JMenuItem mi = new javax.swing.JMenuItem(item.label);
+            javax.swing.JMenuItem mi = newMenuItem(item.label);
             mi.setEnabled(item.enabled);
             mi.addActionListener(e -> item.action.run());
             menu.add(mi);
@@ -934,6 +953,56 @@ public class ReviewPanel extends ToggleDialog {
         } else if (row.store != null) {
             showStoreMarker(row.store);
         }
+    }
+
+    /** Меню ссылок из карточки: сайты сети, Яндекс.Карты, 2ГИС. */
+    private void showLinkMenu(ReviewTableModel.Row row, java.awt.Component anchor) {
+        javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu();
+        Store store = row.store;
+        LatLon c = null;
+        if (row.match != null && row.match.primitive != null) {
+            c = row.match.primitive.getBBox().getCenter();
+        }
+        if (c == null && store != null) {
+            c = new LatLon(store.lat, store.lon);
+        }
+        String address = store != null ? store.address : row.address();
+
+        if (store != null && ("magnit".equals(store.chainId)
+                || "magnit-kosmetik".equals(store.chainId))) {
+            addLink(menu, "Магнит: магазины", "https://magnit.ru/shops");
+            if (c != null) {
+                addLink(menu, "Магнит: доставка",
+                        "https://partner.eda.yandex.net/s/magnitwhitelabel/?lat="
+                                + c.lat() + "&lon=" + c.lon());
+            }
+            menu.addSeparator();
+        }
+
+        if (c != null) {
+            String text = address == null || address.trim().isEmpty()
+                    ? c.lat() + "," + c.lon() : address;
+            String enc = java.net.URLEncoder.encode(text, java.nio.charset.StandardCharsets.UTF_8);
+            addLink(menu, "Яндекс.Карты", "https://yandex.ru/maps/?text=" + enc
+                    + "&ll=" + c.lon() + "," + c.lat() + "&z=18");
+            addLink(menu, "2ГИС", "https://2gis.ru/search/" + enc);
+        }
+
+        if (menu.getComponentCount() > 0) {
+            javax.swing.SwingUtilities.invokeLater(
+                    () -> menu.show(anchor, 0, anchor.getHeight()));
+        }
+    }
+
+    private void addLink(javax.swing.JPopupMenu menu, String title, String url) {
+        javax.swing.JMenuItem item = newMenuItem(title);
+        item.addActionListener(e -> {
+            String error = org.openstreetmap.josm.tools.OpenBrowser.displayUrl(url);
+            if (error != null) {
+                hint.setText("Не удалось открыть браузер: " + error);
+            }
+        });
+        menu.add(item);
     }
 
     /** Значок сети с ореолом в точке, где магазина в OSM ещё нет. */
@@ -1053,6 +1122,11 @@ public class ReviewPanel extends ToggleDialog {
         @Override
         public void onClose(ReviewTableModel.Row row) {
             applyRow(row);
+        }
+
+        @Override
+        public void onLinks(ReviewTableModel.Row row, java.awt.Component anchor) {
+            showLinkMenu(row, anchor);
         }
     }
 

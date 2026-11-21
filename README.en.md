@@ -49,7 +49,9 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    **Panoramas** — an icon in every table row and a button in the details:
    opens Yandex Maps with the panorama layer.
    The same actions are in the row context menu (right-click): **Accept**,
-   **Skip**, **Show on map**, **Select on map** and **Panoramas**.
+   **Skip**, **Show on map**, **Select on map** and **Panoramas**. The store
+   code in the card header is a link: clicking it opens a menu with the chain
+   website, Yandex Maps and 2GIS.
    Reviewed and skipped rows move to the bottom of the list.
 7. **Accept checked** does the same for all checked rows, with a confirmation
    and a list of what will change.
@@ -62,7 +64,7 @@ missing.
 After applying, the object stays selected on the map and a reminder appears
 below the table: the new point is placed at the chain coordinates (usually the
 entrance), so it is worth checking and dragging if needed. For updated objects
-the same line lists the tags that were changed.
+the same line lists the changed tags, with the old values struck through.
 
 ## Data source in the changeset
 
