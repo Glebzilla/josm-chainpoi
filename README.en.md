@@ -29,6 +29,7 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    - `differences: N` — the object exists, but tag values differ;
    - `mapping error` — the store is placed on a building outline or on an entrance;
    - `ok` — everything matches;
+   - `created` — the point was created in this layer and not uploaded yet;
    - `not in chain data` — OSM has a store the chain doesn't have here
      (possibly closed);
    - `other format` — a nearby `М.Кос` (beauty format), not M.Kosmetik;
@@ -51,7 +52,8 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    The same actions are in the row context menu (right-click): **Accept**,
    **Skip**, **Show on map**, **Select on map** and **Panoramas**. The store
    code in the card header is a link: clicking it opens a menu with Yandex Maps
-   and 2GIS (both maps open at the store point, ~80 m scale).
+   and 2GIS (both maps open at the store point, ~80 m scale). The `node/…` link
+   in the "OSM object" column opens the object on osm.org.
    Reviewed and skipped rows move to the bottom of the list.
 7. **Accept checked** does the same for all checked rows, with a confirmation
    and a list of what will change.

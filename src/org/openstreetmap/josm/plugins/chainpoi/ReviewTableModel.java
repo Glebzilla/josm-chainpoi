@@ -121,7 +121,7 @@ public class ReviewTableModel extends AbstractTableModel {
             case 0:
                 return r.selected;
             case 1:
-                return r.match == null ? "" : r.match.text();
+                return isCreated(r) ? "создан" : r.match == null ? "" : r.match.text();
             case 2:
                 return r.title();
             case 3:
@@ -140,6 +140,12 @@ public class ReviewTableModel extends AbstractTableModel {
             rows.get(row).selected = Boolean.TRUE.equals(value);
             fireTableCellUpdated(row, column);
         }
+    }
+
+    /** Объект создан в этом слое и ещё не загружен на сервер. */
+    public static boolean isCreated(Row r) {
+        return r != null && r.match != null && r.match.primitive != null
+                && r.match.primitive.isNew();
     }
 
     public static String ref(OsmPrimitive p) {

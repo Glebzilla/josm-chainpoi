@@ -125,6 +125,7 @@ public class ReviewPanel extends ToggleDialog {
         table.getColumnModel().getColumn(3).setMaxWidth(46);
         table.getColumnModel().getColumn(PANO_COLUMN).setMaxWidth(56);
         table.getColumnModel().getColumn(PANO_COLUMN).setCellRenderer(new PanoRenderer());
+        table.getColumnModel().getColumn(4).setCellRenderer(new RefRenderer());
         table.setDefaultRenderer(String.class, new StatusRenderer());
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -146,6 +147,8 @@ public class ReviewPanel extends ToggleDialog {
                 int modelCol = table.convertColumnIndexToModel(viewCol);
                 if (modelCol == PANO_COLUMN) {
                     openPanorama(row);
+                } else if (modelCol == 4 && e.getClickCount() == 1) {
+                    openOsm(row.objectRef());
                 } else if (e.getClickCount() == 2) {
                     showOnMap(row);
                 }
@@ -466,9 +469,13 @@ public class ReviewPanel extends ToggleDialog {
         int ok = 0;
         int orphan = 0;
         int other = 0;
+        int created = 0;
         for (ReviewTableModel.Row r : model.getRows()) {
             if (r.match == null) {
                 continue;
+            }
+            if (ReviewTableModel.isCreated(r)) {
+                created++;
             }
             switch (r.match.status) {
                 case MISSING:
@@ -481,7 +488,9 @@ public class ReviewPanel extends ToggleDialog {
                     bad++;
                     break;
                 case OK:
-                    ok++;
+                    if (!ReviewTableModel.isCreated(r)) {
+                        ok++;
+                    }
                     break;
                 case ORPHAN:
                     orphan++;
@@ -496,7 +505,7 @@ public class ReviewPanel extends ToggleDialog {
         status.setText("Всего " + model.getRows().size()
                 + ": нет в OSM " + missing + ", расхождения " + diff
                 + ", ошибки " + bad + ", ок " + ok + ", нет в сети " + orphan
-                + ", другое " + other);
+                + ", другое " + other + ", создано " + created);
     }
 
     // ------------------------------------------------------------------
@@ -562,7 +571,6 @@ public class ReviewPanel extends ToggleDialog {
         updateStatus();
         selectRow(row);
         updateDetail();
-        moveToNextReview();
     }
 
     private void run(Applier.Result result) {
@@ -1046,6 +1054,23 @@ public class ReviewPanel extends ToggleDialog {
         return MainApplication.getLayerManager().getEditDataSet();
     }
 
+    private static boolean isOsmRef(String ref) {
+        return ref != null && (ref.startsWith("node/") || ref.startsWith("way/")
+                || ref.startsWith("rel/"));
+    }
+
+    /** Открывает объект OSM на osm.org. */
+    private void openOsm(String ref) {
+        if (!isOsmRef(ref)) {
+            return;
+        }
+        String error = org.openstreetmap.josm.tools.OpenBrowser.displayUrl(
+                "https://www.openstreetmap.org/" + ref);
+        if (error != null) {
+            hint.setText("Не удалось открыть браузер: " + error);
+        }
+    }
+
     /**
      * Открывает Яндекс.Карты со слоем панорам у магазина (как букмарклет).
      *
@@ -1136,6 +1161,20 @@ public class ReviewPanel extends ToggleDialog {
         }
     }
 
+    /** Ссылка на объект OSM: синяя и с подсказкой, если id настоящий. */
+    private static final class RefRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, column);
+            boolean link = !isSelected && isOsmRef(String.valueOf(value));
+            c.setForeground(isSelected ? t.getSelectionForeground()
+                    : link ? BLUE : t.getForeground());
+            setToolTipText(link ? "Открыть объект на osm.org" : null);
+            return c;
+        }
+    }
+
     /** Красит статус по смыслу. */
     private final class StatusRenderer extends DefaultTableCellRenderer {
         @Override
@@ -1146,7 +1185,10 @@ public class ReviewPanel extends ToggleDialog {
             if (!isSelected && column == 1) {
                 ReviewTableModel.Row r = model.getRow(t.convertRowIndexToModel(row));
                 if (r != null && r.match != null) {
-                    switch (r.match.status) {
+                    if (ReviewTableModel.isCreated(r)) {
+                        c.setForeground(BLUE);
+                    } else {
+                        switch (r.match.status) {
                         case MISSING:
                             c.setForeground(RED);
                             break;
@@ -1164,6 +1206,7 @@ public class ReviewPanel extends ToggleDialog {
                             break;
                         default:
                             break;
+                        }
                     }
                 }
             }
