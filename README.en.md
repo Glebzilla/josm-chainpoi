@@ -51,7 +51,7 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    The same actions are in the row context menu (right-click): **Accept**,
    **Skip**, **Show on map**, **Select on map** and **Panoramas**. The store
    code in the card header is a link: clicking it opens a menu with the chain
-   website, Yandex Maps and 2GIS (address search).
+   website, Yandex Maps and 2GIS (both maps open at the store point, ~80 m scale).
    Reviewed and skipped rows move to the bottom of the list.
 7. **Accept checked** does the same for all checked rows, with a confirmation
    and a list of what will change.

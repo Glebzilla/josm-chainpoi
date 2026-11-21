@@ -966,7 +966,6 @@ public class ReviewPanel extends ToggleDialog {
         if (c == null && store != null) {
             c = new LatLon(store.lat, store.lon);
         }
-        String address = store != null ? store.address : row.address();
 
         if (store != null && ("magnit".equals(store.chainId)
                 || "magnit-kosmetik".equals(store.chainId))) {
@@ -975,12 +974,12 @@ public class ReviewPanel extends ToggleDialog {
         }
 
         if (c != null) {
-            String text = address == null || address.trim().isEmpty()
-                    ? c.lat() + "," + c.lon() : address;
-            String enc = java.net.URLEncoder.encode(text, java.nio.charset.StandardCharsets.UTF_8);
-            addLink(menu, "Яндекс.Карты", "https://yandex.ru/maps/?text=" + enc
-                    + "&ll=" + c.lon() + "," + c.lat() + "&z=18");
-            addLink(menu, "2ГИС", "https://2gis.ru/search/" + enc);
+            String point = c.lon() + "," + c.lat();
+            addLink(menu, "Яндекс.Карты", "https://yandex.ru/maps/?ll=" + point
+                    + "&z=19&pt=" + point);
+            addLink(menu, "2ГИС", "https://2gis.ru/?m="
+                    + java.net.URLEncoder.encode(point, java.nio.charset.StandardCharsets.UTF_8)
+                    + "%2F19");
         }
 
         if (menu.getComponentCount() > 0) {
