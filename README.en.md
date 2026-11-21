@@ -67,9 +67,8 @@ with the chain websites (`magnit.ru`, `rabota5ka.ru`, etc.) and appends the same
 addresses to `source`. You can see it in the upload dialog on the "Tags" tab;
 it is never put on OSM objects.
 
-If the geometry was traced from a cadastral source such as EGRN, add
-`source:geometry=ЕГРН` manually in the same dialog: the plugin does not know
-where the geometry came from.
+If the geometry comes from EGRN, its `source:geometry` tag is added by the
+Russia Address Helper plugin automatically — nothing to do here.
 
 ## What is compared
 
