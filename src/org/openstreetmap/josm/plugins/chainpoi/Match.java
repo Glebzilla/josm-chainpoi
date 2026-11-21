@@ -77,7 +77,10 @@ public final class Match {
             case ORPHAN:
                 return "нет в данных сети";
             case OTHER_FORMAT:
-                return "другой формат";
+                return primitive == null || primitive.get("name") == null
+                        || primitive.get("name").isEmpty()
+                        ? "другой формат"
+                        : "другой формат: " + primitive.get("name");
             default:
                 return "нет данных";
         }

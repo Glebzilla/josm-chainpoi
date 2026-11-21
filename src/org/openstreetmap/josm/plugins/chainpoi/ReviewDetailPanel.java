@@ -179,8 +179,15 @@ public class ReviewDetailPanel extends JPanel {
             return;
         }
         Match m = row.match;
-        title.setText(row.title() + (row.store != null && !row.store.code.isEmpty()
-                ? " · " + row.store.code : ""));
+        String head = row.title() + (row.store != null && !row.store.code.isEmpty()
+                ? " · " + row.store.code : "");
+        if (m.status == Match.Status.OTHER_FORMAT && m.primitive != null) {
+            String osmName = m.primitive.get("name");
+            if (osmName != null && !osmName.isEmpty()) {
+                head += " → «" + osmName + "» в OSM";
+            }
+        }
+        title.setText(head);
 
         StringBuilder sb = new StringBuilder(row.address());
         String ref = ReviewTableModel.ref(m.primitive);
@@ -197,6 +204,15 @@ public class ReviewDetailPanel extends JPanel {
                 sb.append("   ·   ");
             }
             sb.append("в OSM не найден");
+        }
+        if (m.status == Match.Status.OTHER_FORMAT && m.primitive != null) {
+            String osmName = m.primitive.get("name");
+            sb.append('\n').append("в OSM: name=")
+                    .append(osmName == null || osmName.isEmpty() ? "—" : osmName);
+            String shop = m.primitive.get("shop");
+            if (shop != null && !shop.isEmpty()) {
+                sb.append(", shop=").append(shop);
+            }
         }
         if (row.store != null && ds != null) {
             AddressTags hint = Matcher.addressHint(row.store, ds);

@@ -32,8 +32,8 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    - `not in chain data` — OSM has a store the chain doesn't have here
      (possibly closed);
    - `other format` — a nearby `М.Кос` (beauty format), not M.Kosmetik;
-     for such an object only opening hours are compared, name and `shop`
-     are left untouched.
+     its name is shown in the row status and its `name`/`shop` tags in the
+     details; only opening hours are compared, name and `shop` are untouched.
 5. Selecting a row shows the details below: full address (small font), OSM
    object, distance, warnings and the list of fields **"in OSM → chain"** with a
    checkbox per change (all checked).
