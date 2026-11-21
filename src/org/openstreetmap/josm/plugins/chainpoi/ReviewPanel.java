@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
+import java.awt.Point;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -84,6 +86,8 @@ public class ReviewPanel extends ToggleDialog {
     private final Map<String, JToggleButton> chainBoxes = new LinkedHashMap<>();
 
     private List<Store> stores = Collections.emptyList();
+    /** Сети, данные которых уже применялись: попадут в источник changeset. */
+    private final Set<String> usedSources = new LinkedHashSet<>();
 
     public ReviewPanel() {
         super("Сетевые магазины", "chainpoi",
@@ -503,6 +507,13 @@ public class ReviewPanel extends ToggleDialog {
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE) != JOptionPane.OK_OPTION) {
             return;
         }
+        List<ReviewTableModel.Row> applied = new ArrayList<>();
+        for (ReviewTableModel.Row row : model.getRows()) {
+            if (row.selected && row.match != null && row.match.canApply()) {
+                applied.add(row);
+            }
+        }
+        noteSources(ds, applied);
         run(result);
         rebuild();
     }
@@ -518,6 +529,7 @@ public class ReviewPanel extends ToggleDialog {
             hint.setText("Нечего применять.");
             return;
         }
+        noteSources(ds, List.of(row));
         run(result);
         row.selected = false;
         row.reviewed = true;
@@ -541,6 +553,22 @@ public class ReviewPanel extends ToggleDialog {
             ds.setSelected(result.touched);
         }
         showReminder(result);
+    }
+
+    /** Запоминает сайты сетей, данные которых применили: пополняет тег changeset. */
+    private void noteSources(DataSet ds, java.util.Collection<ReviewTableModel.Row> rows) {
+        if (ds == null) {
+            return;
+        }
+        for (ReviewTableModel.Row row : rows) {
+            if (row.store != null && row.store.chainId != null) {
+                usedSources.add(row.store.chainId);
+            }
+        }
+        String urls = Sources.join(usedSources);
+        if (!urls.isEmpty()) {
+            ds.addChangeSetTag(Sources.TAG, urls);
+        }
     }
 
     /** Разобранные и пропущенные строки — вниз, остальные по важности. */
@@ -689,21 +717,19 @@ public class ReviewPanel extends ToggleDialog {
         detail.setRow(row, editDataSet());
     }
 
-    /** Правый клик по строке: те же действия, что в подробностях, плюс выделение на карте. */
+    /**
+     * Правый клик по строке. Короткий клик — обычное меню; зажатие (или сдвиг)
+     * открывает «цветок»: ведём к лепестку и отпускаем кнопку.
+     */
     private void addRowMenu() {
-        table.addMouseListener(new MouseAdapter() {
+        MouseAdapter gestures = new MouseAdapter() {
+            private javax.swing.Timer hold;
+            private ReviewTableModel.Row row;
+            private Point press;
+
             @Override
             public void mousePressed(MouseEvent e) {
-                maybePopup(e);
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                maybePopup(e);
-            }
-
-            private void maybePopup(MouseEvent e) {
-                if (!e.isPopupTrigger()) {
+                if (!SwingUtilities.isRightMouseButton(e)) {
                     return;
                 }
                 int viewRow = table.rowAtPoint(e.getPoint());
@@ -711,53 +737,114 @@ public class ReviewPanel extends ToggleDialog {
                     return;
                 }
                 table.setRowSelectionInterval(viewRow, viewRow);
-                ReviewTableModel.Row row = model.getRow(table.convertRowIndexToModel(viewRow));
-                if (row != null) {
-                    buildRowMenu(row).show(table, e.getX(), e.getY());
+                row = model.getRow(table.convertRowIndexToModel(viewRow));
+                if (row == null) {
+                    return;
+                }
+                press = e.getPoint();
+                PieMenu.resetSuppress();
+                if (hold != null) {
+                    hold.stop();
+                }
+                hold = new javax.swing.Timer(140, ev -> {
+                    hold.stop();
+                    openPie(row, press);
+                });
+                hold.setRepeats(false);
+                hold.start();
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (!SwingUtilities.isRightMouseButton(e) || press == null
+                        || hold == null || !hold.isRunning()) {
+                    return;
+                }
+                if (e.getPoint().distance(press) > 8) {
+                    hold.stop();
+                    openPie(row, press);
                 }
             }
-        });
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (!SwingUtilities.isRightMouseButton(e)) {
+                    return;
+                }
+                if (hold != null) {
+                    hold.stop();
+                }
+                if (PieMenu.suppressed()) {
+                    press = null;
+                    return;
+                }
+                if (row != null && press != null) {
+                    buildRowMenu(row).show(table, e.getX(), e.getY());
+                }
+                press = null;
+            }
+        };
+        table.addMouseListener(gestures);
+        table.addMouseMotionListener(gestures);
+    }
+
+    /** Открывает цветок в точке нажатия (экранные координаты). */
+    private void openPie(ReviewTableModel.Row row, Point at) {
+        if (at == null) {
+            return;
+        }
+        Point screen = new Point(at);
+        SwingUtilities.convertPointToScreen(screen, table);
+        Window owner = SwingUtilities.getWindowAncestor(table);
+        if (!PieMenu.showRadial(owner, rowItems(row), screen)) {
+            buildRowMenu(row).show(table, at.x, at.y);
+        }
+    }
+
+    /** Действия над строкой — общие для обычного меню и «цветка». */
+    private List<PieMenu.Item> rowItems(ReviewTableModel.Row row) {
+        Match m = row.match;
+        OsmPrimitive p = m == null ? null : m.primitive;
+
+        boolean canAccept = m != null && m.canApply()
+                && (m.status == Match.Status.MISSING || m.status == Match.Status.ORPHAN
+                    || hasAccepted(row));
+        boolean canSkip = m != null && m.status != Match.Status.OK;
+        boolean canLocate = p != null || row.store != null;
+
+        List<PieMenu.Item> items = new ArrayList<>();
+        items.add(new PieMenu.Item("Принять", "Принять", PieMenu.Kind.ACCEPT,
+                canAccept, () -> applyRow(row)));
+        items.add(new PieMenu.Item("Пропустить", "Пропустить", PieMenu.Kind.SKIP,
+                canSkip, () -> skipRow(row)));
+        items.add(new PieMenu.Item("Показать на карте", "Показать", PieMenu.Kind.SHOW,
+                canLocate, () -> showOnMap(row)));
+        items.add(new PieMenu.Item("Выделить на карте", "Выделить", PieMenu.Kind.SELECT,
+                p != null, () -> {
+                    DataSet ds = editDataSet();
+                    if (ds != null && p != null) {
+                        ds.setSelected(p);
+                        ensureVisible(p);
+                    }
+                }));
+        items.add(new PieMenu.Item("Панорамы", "Панорамы", PieMenu.Kind.PANO,
+                canLocate, () -> openPanorama(row)));
+        return items;
     }
 
     private javax.swing.JPopupMenu buildRowMenu(ReviewTableModel.Row row) {
         javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu();
-        Match m = row.match;
-
-        javax.swing.JMenuItem accept = new javax.swing.JMenuItem("Принять");
-        accept.setEnabled(m != null && m.canApply()
-                && (m.status == Match.Status.MISSING || m.status == Match.Status.ORPHAN
-                    || hasAccepted(row)));
-        accept.addActionListener(e -> applyRow(row));
-        menu.add(accept);
-
-        javax.swing.JMenuItem skip = new javax.swing.JMenuItem("Пропустить");
-        skip.setEnabled(m != null && m.status != Match.Status.OK);
-        skip.addActionListener(e -> skipRow(row));
-        menu.add(skip);
-
-        menu.addSeparator();
-
-        OsmPrimitive p = m == null ? null : m.primitive;
-        javax.swing.JMenuItem show = new javax.swing.JMenuItem("Показать на карте");
-        show.setEnabled(p != null || row.store != null);
-        show.addActionListener(e -> showOnMap(row));
-        menu.add(show);
-
-        javax.swing.JMenuItem select = new javax.swing.JMenuItem("Выделить на карте");
-        select.setEnabled(p != null);
-        select.addActionListener(e -> {
-            DataSet ds = editDataSet();
-            if (ds != null && p != null) {
-                ds.setSelected(p);
-                ensureVisible(p);
+        List<PieMenu.Item> items = rowItems(row);
+        for (int i = 0; i < items.size(); i++) {
+            PieMenu.Item item = items.get(i);
+            javax.swing.JMenuItem mi = new javax.swing.JMenuItem(item.label);
+            mi.setEnabled(item.enabled);
+            mi.addActionListener(e -> item.action.run());
+            menu.add(mi);
+            if (i == 1) {
+                menu.addSeparator();
             }
-        });
-        menu.add(select);
-
-        javax.swing.JMenuItem pano = new javax.swing.JMenuItem("Панорамы");
-        pano.setEnabled(p != null || row.store != null);
-        pano.addActionListener(e -> openPanorama(row));
-        menu.add(pano);
+        }
         return menu;
     }
 

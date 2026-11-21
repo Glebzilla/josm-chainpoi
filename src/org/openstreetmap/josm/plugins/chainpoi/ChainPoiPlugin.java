@@ -12,11 +12,16 @@ import org.openstreetmap.josm.tools.Logging;
  */
 public class ChainPoiPlugin extends Plugin {
 
+    private static boolean uploadHookRegistered;
     private ReviewPanel panel;
     private boolean installed;
 
     public ChainPoiPlugin(PluginInformation info) {
         super(info);
+        if (!uploadHookRegistered) {
+            org.openstreetmap.josm.actions.UploadAction.registerUploadHook(new ChainPoiUploadHook());
+            uploadHookRegistered = true;
+        }
         // Плагин грузится до создания окна карты, поэтому mapFrameInitialized
         // от JOSM может не прийти. Слушатель сработает и сразу, если карта уже есть.
         MainApplication.addAndFireMapFrameListener(this::mapFrameInitialized);
