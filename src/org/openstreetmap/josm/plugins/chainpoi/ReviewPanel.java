@@ -971,11 +971,6 @@ public class ReviewPanel extends ToggleDialog {
         if (store != null && ("magnit".equals(store.chainId)
                 || "magnit-kosmetik".equals(store.chainId))) {
             addLink(menu, "Магнит: магазины", "https://magnit.ru/shops");
-            if (c != null) {
-                addLink(menu, "Магнит: доставка",
-                        "https://partner.eda.yandex.net/s/magnitwhitelabel/?lat="
-                                + c.lat() + "&lon=" + c.lon());
-            }
             menu.addSeparator();
         }
 
