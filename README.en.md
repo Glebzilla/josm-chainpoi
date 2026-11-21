@@ -38,8 +38,10 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    checkbox per change (all checked).
    The object is not selected on the map. Double-click or the **Map** button
    centre it, set a scale of about 80 m, so the building is clearly visible, and
-   highlight the object for a couple of seconds; **Select on map** in the row
-   context menu selects it without changing the scale.
+   highlight the object for a couple of seconds; if the store is not in OSM yet,
+   a chain icon with a halo is shown at its location for a moment instead.
+   **Select on map** in the row context menu selects it without changing the
+   scale.
 6. Buttons: `◀` `▶` — navigate, **Accept** — apply to this object,
    **Skip**, **Map** — centre, **Closed** (for `not in chain data` rows).
    **Panoramas** — an icon in every table row and a button in the details:

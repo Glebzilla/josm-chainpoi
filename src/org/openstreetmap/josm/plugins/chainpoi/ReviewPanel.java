@@ -92,6 +92,7 @@ public class ReviewPanel extends ToggleDialog {
     private transient OsmPrimitive flashed;
     private transient boolean flashedWasOn;
     private transient javax.swing.Timer flashTimer;
+    private transient StoreMarker storeMarker;
 
     public ReviewPanel() {
         super("Сетевые магазины", "chainpoi",
@@ -920,7 +921,35 @@ public class ReviewPanel extends ToggleDialog {
             return;
         }
         MainApplication.getMap().mapView.zoomTo(new Bounds(center, span, span));
-        flash(p);
+        if (p != null) {
+            flash(p);
+        } else if (row.store != null) {
+            showStoreMarker(row.store);
+        }
+    }
+
+    /** Значок сети с ореолом в точке, где магазина в OSM ещё нет. */
+    private void showStoreMarker(Store store) {
+        MapView mv = MainApplication.getMap() == null ? null : MainApplication.getMap().mapView;
+        if (mv == null) {
+            return;
+        }
+        if (storeMarker != null) {
+            storeMarker.cancel();
+            storeMarker = null;
+        }
+        javax.swing.ImageIcon icon =
+                org.openstreetmap.josm.tools.ImageProvider.get(iconFor(store.chainId));
+        StoreMarker marker = new StoreMarker(mv, new LatLon(store.lat, store.lon),
+                icon, StoreMarker.colorFor(store.chainId));
+        marker.setOnFinish(() -> {
+            if (storeMarker == marker) {
+                storeMarker = null;
+            }
+        });
+        storeMarker = marker;
+        mv.addTemporaryLayer(marker);
+        marker.start();
     }
 
     /** Кратко подсвечивает объект, не меняя выделение. */
