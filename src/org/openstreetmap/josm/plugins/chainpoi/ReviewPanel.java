@@ -856,11 +856,11 @@ public class ReviewPanel extends ToggleDialog {
 
     private javax.swing.JMenuItem newMenuItem(String text) {
         javax.swing.JMenuItem item = new javax.swing.JMenuItem(text);
-        item.setFont(item.getFont().deriveFont(10f));
+        item.setFont(item.getFont().deriveFont(11f));
         item.setMargin(new java.awt.Insets(0, 6, 0, 6));
         java.awt.Dimension pref = item.getPreferredSize();
         item.setPreferredSize(new java.awt.Dimension(
-                Math.max(150, pref.width), 16));
+                Math.max(150, pref.width), 18));
         return item;
     }
 
