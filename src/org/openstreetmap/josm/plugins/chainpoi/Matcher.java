@@ -91,8 +91,18 @@ public final class Matcher {
                 LatLon c = center(other);
                 if (c != null) {
                     double d = distance(store.lat, store.lon, c.lat(), c.lon());
-                    return Match.of(Match.Status.OTHER_FORMAT, other, d, List.of(),
-                            List.of("Рядом «М.Кос» — бьюти-формат, а не М.Косметик; такой объект не трогаем."));
+                    // «М.Кос» — другой формат, но часы у сети общие: сверяем только их.
+                    List<FieldDiff> diffs = new ArrayList<>();
+                    String chainHours = store.tags.get("opening_hours");
+                    String osmHours = other.get("opening_hours");
+                    if (chainHours != null && !chainHours.trim().isEmpty()
+                            && !sameValue("opening_hours", osmHours, chainHours)) {
+                        diffs.add(new FieldDiff("opening_hours", osmHours, chainHours,
+                                osmHours == null ? FieldDiff.Kind.MISSING : FieldDiff.Kind.DIFFERENT));
+                    }
+                    return Match.of(Match.Status.OTHER_FORMAT, other, d, diffs,
+                            List.of("Рядом «М.Кос» — бьюти-формат, а не М.Косметик; "
+                                    + "здесь сверяем только часы работы."));
                 }
             }
             return Match.missing();

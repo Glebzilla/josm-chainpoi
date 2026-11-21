@@ -32,7 +32,8 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    - `not in chain data` — OSM has a store the chain doesn't have here
      (possibly closed);
    - `other format` — a nearby `М.Кос` (beauty format), not M.Kosmetik;
-     such an object is left untouched.
+     for such an object only opening hours are compared, name and `shop`
+     are left untouched.
 5. Selecting a row shows the details below: full address (small font), OSM
    object, distance, warnings and the list of fields **"in OSM → chain"** with a
    checkbox per change (all checked).
@@ -176,7 +177,8 @@ each object is yours). The plugin does not touch `brand` on M.Kosmetik.
 The API does not distinguish the "М.Кос" beauty cluster: all cosmetics stores
 come as `DG` and are treated as M.Kosmetik. It is rare — beauty stores exist
 only in large cities (about 10% of the chain), so in practice it almost never
-occurs.
+occurs. If an OSM object is named "М.Кос", the plugin shows it as "other format"
+and compares only its opening hours.
 
 Next to a name difference a notice is shown: the rename comes from the chain's
 official rebranding, **not from an OSM community decision**, and the sign on

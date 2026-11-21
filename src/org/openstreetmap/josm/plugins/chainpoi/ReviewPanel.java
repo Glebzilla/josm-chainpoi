@@ -452,7 +452,7 @@ public class ReviewPanel extends ToggleDialog {
             case OK:
                 return 4;
             case OTHER_FORMAT:
-                return 5;
+                return m.diffs.isEmpty() ? 5 : 1;
             default:
                 return 5;
         }
@@ -464,6 +464,7 @@ public class ReviewPanel extends ToggleDialog {
         int bad = 0;
         int ok = 0;
         int orphan = 0;
+        int other = 0;
         for (ReviewTableModel.Row r : model.getRows()) {
             if (r.match == null) {
                 continue;
@@ -484,13 +485,17 @@ public class ReviewPanel extends ToggleDialog {
                 case ORPHAN:
                     orphan++;
                     break;
+                case OTHER_FORMAT:
+                    other++;
+                    break;
                 default:
                     break;
             }
         }
         status.setText("Всего " + model.getRows().size()
                 + ": нет в OSM " + missing + ", расхождения " + diff
-                + ", ошибки " + bad + ", ок " + ok + ", нет в сети " + orphan);
+                + ", ошибки " + bad + ", ок " + ok + ", нет в сети " + orphan
+                + ", другой формат " + other);
     }
 
     // ------------------------------------------------------------------
@@ -714,7 +719,8 @@ public class ReviewPanel extends ToggleDialog {
 
     private static boolean needsAttention(Match m) {
         return m.status == Match.Status.MISSING || m.status == Match.Status.DIFF
-                || m.status == Match.Status.BAD || m.status == Match.Status.ORPHAN;
+                || m.status == Match.Status.BAD || m.status == Match.Status.ORPHAN
+                || (m.status == Match.Status.OTHER_FORMAT && !m.diffs.isEmpty());
     }
 
     private void updateDetail() {

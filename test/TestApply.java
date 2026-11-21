@@ -30,6 +30,7 @@ public class TestApply {
 
         checkMissing();
         checkPartialSelectedFields();
+        checkOtherFormatHours();
         checkOrphan();
         checkUnselected();
     }
@@ -75,6 +76,37 @@ public class TestApply {
         System.out.println("  opening_hours=" + after.get("opening_hours") + " (должно остаться 09:00-21:00)");
         System.out.println("  operator=" + after.get("operator"));
         System.out.println("  match again=" + Matcher.check(store, ds).status);
+    }
+
+    /** «М.Кос»: сверяются только часы, имя и shop не меняются. */
+    private static void checkOtherFormatHours() {
+        Map<String, String> tags = new LinkedHashMap<>();
+        tags.put("name", "М.Косметик");
+        tags.put("shop", "chemist");
+        tags.put("opening_hours", "Mo-Su 10:00-22:00");
+        Store cosmetic = new Store("magnit-kosmetik", "М.Косметик", "test", "",
+                55.0, 49.0, "DG", tags);
+
+        DataSet ds = new DataSet();
+        Node n = new Node(new LatLon(55.0, 49.0));
+        n.put("name", "М.Кос");
+        n.put("shop", "cosmetics");
+        n.put("opening_hours", "Mo-Su 09:00-21:00");
+        ds.addPrimitive(n);
+
+        Match m = Matcher.check(cosmetic, ds);
+        System.out.println("[other format] status=" + m.status + " diffs=" + m.diffs.size()
+                + " canApply=" + m.canApply());
+        for (FieldDiff d : m.diffs) {
+            System.out.println("  " + d.key + ": " + d.changeText());
+        }
+
+        ReviewTableModel.Row row = new ReviewTableModel.Row(cosmetic, m);
+        Applier.Result r = Applier.buildRow(ds, row);
+        System.out.println("  updated=" + r.updated + " commands=" + r.commands.size());
+        r.commands.get(0).executeCommand();
+        System.out.println("  opening_hours=" + n.get("opening_hours"));
+        System.out.println("  name=" + n.get("name") + " shop=" + n.get("shop"));
     }
 
     private static void checkOrphan() {

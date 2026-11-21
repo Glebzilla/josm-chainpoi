@@ -92,7 +92,8 @@ public final class Applier {
                 break;
             }
             case DIFF:
-            case BAD: {
+            case BAD:
+            case OTHER_FORMAT: {
                 Command c = tagCommand(ds, m);
                 if (c == null) {
                     r.skipped++;

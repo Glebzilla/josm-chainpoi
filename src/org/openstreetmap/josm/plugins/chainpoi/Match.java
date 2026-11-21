@@ -87,6 +87,8 @@ public final class Match {
     public boolean canApply() {
         return status == Status.MISSING
                 || status == Status.ORPHAN
-                || (status == Status.DIFF || status == Status.BAD);
+                || status == Status.DIFF
+                || status == Status.BAD
+                || (status == Status.OTHER_FORMAT && !diffs.isEmpty());
     }
 }

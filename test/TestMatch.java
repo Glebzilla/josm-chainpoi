@@ -105,6 +105,16 @@ public class TestMatch {
         report("shop=cosmetics (это уже М.Кос)", cosmetic,
                 nodeWith(cosmetic, cosmetics, cosmetic.lat, cosmetic.lon));
 
+        Map<String, String> mkos = new java.util.LinkedHashMap<>(cosmetics);
+        mkos.put("name", "М.Кос");
+        mkos.put("opening_hours", "Mo-Su 09:00-21:00");
+        report("М.Кос, часы отличаются", cosmetic,
+                nodeWith(cosmetic, mkos, cosmetic.lat, cosmetic.lon));
+
+        mkos.put("opening_hours", cosmetic.tags.get("opening_hours"));
+        report("М.Кос, часы совпадают", cosmetic,
+                nodeWith(cosmetic, mkos, cosmetic.lat, cosmetic.lon));
+
         DataSet other = new DataSet();
         Node n = new Node(new LatLon(cosmetic.lat, cosmetic.lon));
         n.putAll(store.tags);

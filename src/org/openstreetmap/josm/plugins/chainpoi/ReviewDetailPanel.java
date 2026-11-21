@@ -232,12 +232,19 @@ public class ReviewDetailPanel extends JPanel {
                     + escape(String.join("; ", m.warnings)) + "</body></html>");
         }
 
-        boolean showDiffCheckbox = m.status == Match.Status.DIFF || m.status == Match.Status.BAD;
+        boolean showDiffCheckbox = m.status == Match.Status.DIFF || m.status == Match.Status.BAD
+                || m.status == Match.Status.OTHER_FORMAT;
         List<FieldDiff> fields = displayDiffs(row);
         diffModel.set(fields, showDiffCheckbox);
         boolean hasFields = !fields.isEmpty();
         diffCards.show(diffArea, hasFields ? CARD_TABLE : CARD_NONE);
-        noDiffs.setText(m.status == Match.Status.OK ? "Все теги совпадают" : "Нечего показывать");
+        if (m.status == Match.Status.OK) {
+            noDiffs.setText("Все теги совпадают");
+        } else if (m.status == Match.Status.OTHER_FORMAT) {
+            noDiffs.setText("Часы работы совпадают");
+        } else {
+            noDiffs.setText("Нечего показывать");
+        }
         accept.setVisible(m.status != Match.Status.ORPHAN);
         accept.setEnabled(m.canApply() && hasAccepted());
         close.setVisible(m.status == Match.Status.ORPHAN);

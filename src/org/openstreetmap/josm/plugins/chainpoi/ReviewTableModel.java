@@ -28,7 +28,9 @@ public class ReviewTableModel extends AbstractTableModel {
             this.store = store;
             this.match = match;
             this.selected = match != null
-                    && (match.status == Match.Status.MISSING || match.status == Match.Status.DIFF);
+                    && (match.status == Match.Status.MISSING
+                        || match.status == Match.Status.DIFF
+                        || (match.status == Match.Status.OTHER_FORMAT && !match.diffs.isEmpty()));
         }
 
         public String title() {
