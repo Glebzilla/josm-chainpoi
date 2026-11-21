@@ -56,7 +56,9 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    in the "OSM object" column opens the object on osm.org.
    Reviewed and skipped rows move to the bottom of the list.
 7. **Accept checked** does the same for all checked rows, with a confirmation
-   and a list of what will change.
+   and a list of what will change. The **сорт.** checkbox above the table turns
+   automatic sorting on: reviewed and skipped rows move to the bottom. Clear it
+   if you do not want rows to jump after applying.
 8. Uploading to OSM is up to you and your account.
 
 Overpass is not used: matching is done against what is already loaded in the

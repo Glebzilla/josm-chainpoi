@@ -93,6 +93,11 @@ public class ReviewPanel extends ToggleDialog {
     private transient boolean flashedWasOn;
     private transient javax.swing.Timer flashTimer;
     private transient StoreMarker storeMarker;
+    /** Автосортировка строк по статусу и разобранности. */
+    private boolean sortEnabled = org.openstreetmap.josm.spi.preferences.Config.getPref()
+            .getBoolean("chainpoi.sort", true);
+    private final javax.swing.JCheckBox sortBox =
+            new javax.swing.JCheckBox("сорт.", sortEnabled);
 
     public ReviewPanel() {
         super("Сетевые магазины", "chainpoi",
@@ -108,6 +113,16 @@ public class ReviewPanel extends ToggleDialog {
         topButtons.add(fileButton);
         top.add(topButtons, BorderLayout.WEST);
         top.add(status, BorderLayout.CENTER);
+        sortBox.setFocusable(false);
+        sortBox.setToolTipText("Разобранные и пропущенные строки — вниз; "
+                + "снимите, чтобы строки оставались на месте");
+        sortBox.addActionListener(e -> {
+            sortEnabled = sortBox.isSelected();
+            org.openstreetmap.josm.spi.preferences.Config.getPref()
+                    .putBoolean("chainpoi.sort", sortEnabled);
+            resort();
+        });
+        top.add(sortBox, BorderLayout.EAST);
 
         JPanel north = new JPanel(new BorderLayout(0, 2));
         north.add(top, BorderLayout.NORTH);
@@ -409,9 +424,11 @@ public class ReviewPanel extends ToggleDialog {
         for (Match orphan : Matcher.orphans(active, ds)) {
             rows.add(new ReviewTableModel.Row(null, orphan));
         }
-        rows.sort(Comparator
-                .comparingInt((ReviewTableModel.Row r) -> r.reviewed ? 1 : 0)
-                .thenComparingInt(r -> rank(r.match)));
+        if (sortEnabled) {
+            rows.sort(Comparator
+                    .comparingInt((ReviewTableModel.Row r) -> r.reviewed ? 1 : 0)
+                    .thenComparingInt(r -> rank(r.match)));
+        }
         model.setRows(rows);
         updateStatus();
         if (!rows.isEmpty() && table.getSelectedRow() < 0) {
@@ -600,9 +617,11 @@ public class ReviewPanel extends ToggleDialog {
 
     /** Разобранные и пропущенные строки — вниз, остальные по важности. */
     private void resort() {
-        model.getRows().sort(Comparator
-                .comparingInt((ReviewTableModel.Row r) -> r.reviewed ? 1 : 0)
-                .thenComparingInt(r -> rank(r.match)));
+        if (sortEnabled) {
+            model.getRows().sort(Comparator
+                    .comparingInt((ReviewTableModel.Row r) -> r.reviewed ? 1 : 0)
+                    .thenComparingInt(r -> rank(r.match)));
+        }
         model.fireTableDataChanged();
     }
 
