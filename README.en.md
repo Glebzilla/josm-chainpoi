@@ -43,9 +43,7 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    **Skip**, **Map** — centre, **Closed** (for `not in chain data` rows).
    **Panoramas** — an icon in every table row and a button in the details:
    opens Yandex Maps with the panorama layer.
-   The same actions are in the row context menu: a short right-click opens the
-   usual menu, while holding the button and moving the mouse opens a ring of
-   sectors around the cursor (release over a sector): **Accept**,
+   The same actions are in the row context menu (right-click): **Accept**,
    **Skip**, **Show on map**, **Select on map** and **Panoramas**.
    Reviewed and skipped rows move to the bottom of the list.
 7. **Accept checked** does the same for all checked rows, with a confirmation
@@ -66,9 +64,6 @@ When the plugin applies chain data, it adds the `source:chainpoi` changeset tag
 with the chain websites (`magnit.ru`, `rabota5ka.ru`, etc.) and appends the same
 addresses to `source`. You can see it in the upload dialog on the "Tags" tab;
 it is never put on OSM objects.
-
-If the geometry comes from EGRN, its `source:geometry` tag is added by the
-Russia Address Helper plugin automatically — nothing to do here.
 
 ## What is compared
 
