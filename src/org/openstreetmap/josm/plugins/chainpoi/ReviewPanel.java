@@ -495,7 +495,7 @@ public class ReviewPanel extends ToggleDialog {
         status.setText("Всего " + model.getRows().size()
                 + ": нет в OSM " + missing + ", расхождения " + diff
                 + ", ошибки " + bad + ", ок " + ok + ", нет в сети " + orphan
-                + ", другой формат " + other);
+                + ", другое " + other);
     }
 
     // ------------------------------------------------------------------
@@ -615,7 +615,9 @@ public class ReviewPanel extends ToggleDialog {
         } else if (r.closed > 0) {
             text = "Отмечено закрытым: " + ref + ".";
         } else {
-            text = "Изменено: " + ref + ". Объект выделен на карте.";
+            String keys = r.changedKeys.isEmpty() ? ""
+                    : " (" + String.join(", ", r.changedKeys) + ")";
+            text = "Изменено: " + ref + keys + ". Объект выделен на карте.";
         }
         hint.setText("<html><body style='width:300px'>" + text + "</body></html>");
         hint.setForeground(BLUE);

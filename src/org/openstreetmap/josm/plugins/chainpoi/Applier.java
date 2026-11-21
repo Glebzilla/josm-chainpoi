@@ -4,8 +4,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.openstreetmap.josm.command.AddCommand;
 import org.openstreetmap.josm.command.ChangePropertyCommand;
@@ -28,6 +30,8 @@ public final class Applier {
         public final List<Command> commands = new ArrayList<>();
         /** Объекты, которые затронуты: их стоит выделить после применения. */
         public final List<OsmPrimitive> touched = new ArrayList<>();
+        /** Какие теги изменены (для напоминания после применения). */
+        public final Set<String> changedKeys = new LinkedHashSet<>();
         public int created;
         public int updated;
         public int closed;
@@ -40,6 +44,7 @@ public final class Applier {
         void merge(Result other) {
             commands.addAll(other.commands);
             touched.addAll(other.touched);
+            changedKeys.addAll(other.changedKeys);
             created += other.created;
             updated += other.updated;
             closed += other.closed;
@@ -94,7 +99,7 @@ public final class Applier {
             case DIFF:
             case BAD:
             case OTHER_FORMAT: {
-                Command c = tagCommand(ds, m);
+                Command c = tagCommand(ds, m, r);
                 if (c == null) {
                     r.skipped++;
                 } else {
@@ -118,7 +123,7 @@ public final class Applier {
     }
 
     /** Дополняет объект тегами, отмеченными в панели. */
-    private static Command tagCommand(DataSet ds, Match m) {
+    private static Command tagCommand(DataSet ds, Match m, Result r) {
         OsmPrimitive old = m.primitive;
         if (old == null || old.isDeleted() || old.isIncomplete()) {
             return null;
@@ -132,6 +137,7 @@ public final class Applier {
         if (change.isEmpty()) {
             return null;
         }
+        r.changedKeys.addAll(change.keySet());
         return new ChangePropertyCommand(ds, Collections.singleton(old), change);
     }
 

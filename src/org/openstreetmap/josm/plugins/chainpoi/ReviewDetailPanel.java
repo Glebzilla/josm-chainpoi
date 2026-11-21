@@ -249,7 +249,7 @@ public class ReviewDetailPanel extends JPanel {
         }
 
         boolean showDiffCheckbox = m.status == Match.Status.DIFF || m.status == Match.Status.BAD
-                || m.status == Match.Status.OTHER_FORMAT;
+                || (m.status == Match.Status.OTHER_FORMAT && !m.diffs.isEmpty());
         List<FieldDiff> fields = displayDiffs(row);
         diffModel.set(fields, showDiffCheckbox);
         boolean hasFields = !fields.isEmpty();
@@ -257,7 +257,7 @@ public class ReviewDetailPanel extends JPanel {
         if (m.status == Match.Status.OK) {
             noDiffs.setText("Все теги совпадают");
         } else if (m.status == Match.Status.OTHER_FORMAT) {
-            noDiffs.setText("Часы работы совпадают");
+            noDiffs.setText("Часы работы не указаны");
         } else {
             noDiffs.setText("Нечего показывать");
         }
@@ -312,6 +312,18 @@ public class ReviewDetailPanel extends JPanel {
             }
         } else if (m.status == Match.Status.ORPHAN && m.primitive != null) {
             out.add(new FieldDiff("shop", m.primitive.get("shop"), null, FieldDiff.Kind.DIFFERENT));
+        } else if (m.status == Match.Status.OTHER_FORMAT) {
+            if (!m.diffs.isEmpty()) {
+                out.addAll(m.diffs);
+            } else if (row.store != null && m.primitive != null) {
+                String chainHours = row.store.tags.get("opening_hours");
+                if (chainHours != null && !chainHours.trim().isEmpty()) {
+                    FieldDiff same = new FieldDiff("opening_hours",
+                            m.primitive.get("opening_hours"), chainHours, FieldDiff.Kind.DIFFERENT);
+                    same.accepted = false;
+                    out.add(same);
+                }
+            }
         } else {
             out.addAll(m.diffs);
         }

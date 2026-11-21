@@ -33,7 +33,8 @@ and **Pyaterochka** (source: the chain's job vacancy database).
      (possibly closed);
    - `other format` — a nearby `М.Кос` (beauty format), not M.Kosmetik;
      its name is shown in the row status and its `name`/`shop` tags in the
-     details; only opening hours are compared, name and `shop` are untouched.
+     details; opening hours are always listed (read-only when they match),
+     name and `shop` are untouched.
 5. Selecting a row shows the details below: full address (small font), OSM
    object, distance, warnings and the list of fields **"in OSM → chain"** with a
    checkbox per change (all checked).
@@ -60,7 +61,8 @@ missing.
 
 After applying, the object stays selected on the map and a reminder appears
 below the table: the new point is placed at the chain coordinates (usually the
-entrance), so it is worth checking and dragging if needed.
+entrance), so it is worth checking and dragging if needed. For updated objects
+the same line lists the tags that were changed.
 
 ## Data source in the changeset
 
