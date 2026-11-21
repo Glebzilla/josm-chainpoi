@@ -38,11 +38,13 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    checkbox per change (all checked).
    The object is selected on the map; if it is out of view, the map pans to it
    without changing the scale. Double-click or the **Map** button centre it and
-   set a scale of about 200 m (not as close as JOSM's `3` key does for a point).
+   set a scale of about 80 m, so the building is clearly visible.
 6. Buttons: `◀` `▶` — navigate, **Accept** — apply to this object,
    **Skip**, **Map** — centre, **Closed** (for `not in chain data` rows).
    **Panoramas** — an icon in every table row and a button in the details:
    opens Yandex Maps with the panorama layer.
+   The same actions are in the row context menu (right-click): **Accept**,
+   **Skip**, **Show on map**, **Select on map** and **Panoramas**.
    Reviewed and skipped rows move to the bottom of the list.
 7. **Accept checked** does the same for all checked rows, with a confirmation
    and a list of what will change.

@@ -115,7 +115,7 @@ public class ReviewDetailPanel extends JPanel {
         next.setToolTipText("Следующий объект");
         accept.setToolTipText("Применить отмеченные изменения к этому объекту");
         skip.setToolTipText("Не менять этот объект");
-        show.setToolTipText("Показать объект на карте (масштаб около 200 м)");
+        show.setToolTipText("Показать объект на карте (масштаб около 80 м)");
         close.setToolTipText("Отметить магазин закрытым: shop → disused:shop");
 
         panorama.setToolTipText("Открыть панорамы у этого магазина");

@@ -22,6 +22,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
@@ -46,8 +47,8 @@ import org.openstreetmap.josm.tools.Shortcut;
 public class ReviewPanel extends ToggleDialog {
 
     private static final double MAX_AREA = 0.5;
-    /** Масштаб при переходе к магазину: ~220 м по высоте, а не «в упор», как JOSM для точки. */
-    private static final double POINT_SPAN_DEG = 0.002;
+    /** Масштаб при переходе к магазину: ~80 м по высоте, чтобы был виден дом, а не район. */
+    private static final double POINT_SPAN_DEG = 0.0007;
 
     private static final Color RED = new Color(0xB0, 0x00, 0x20);
     private static final Color ORANGE = new Color(0xB3, 0x5C, 0x00);
@@ -140,11 +141,20 @@ public class ReviewPanel extends ToggleDialog {
                 }
             }
         });
+        addRowMenu();
 
         JPanel center = new JPanel(new BorderLayout(0, 2));
-        center.add(new JScrollPane(table), BorderLayout.CENTER);
+        JScrollPane tableScroll = new JScrollPane(table);
+        tableScroll.setMinimumSize(new java.awt.Dimension(100, 60));
         detail.setPreferredSize(new java.awt.Dimension(320, 205));
-        center.add(detail, BorderLayout.SOUTH);
+        detail.setMinimumSize(new java.awt.Dimension(100, 120));
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tableScroll, detail);
+        split.setResizeWeight(0.35);
+        split.setContinuousLayout(true);
+        split.setBorder(null);
+        split.setDividerSize(6);
+        split.setDividerLocation(0.42);
+        center.add(split, BorderLayout.CENTER);
         content.add(center, BorderLayout.CENTER);
 
         applyButton.setPreferredSize(new java.awt.Dimension(140, 24));
@@ -517,7 +527,7 @@ public class ReviewPanel extends ToggleDialog {
         } else if (result.closed > 0) {
             model.getRows().remove(row);
         }
-        model.fireTableDataChanged();
+        resort();
         updateStatus();
         selectRow(row);
         updateDetail();
@@ -531,6 +541,14 @@ public class ReviewPanel extends ToggleDialog {
             ds.setSelected(result.touched);
         }
         showReminder(result);
+    }
+
+    /** Разобранные и пропущенные строки — вниз, остальные по важности. */
+    private void resort() {
+        model.getRows().sort(Comparator
+                .comparingInt((ReviewTableModel.Row r) -> r.reviewed ? 1 : 0)
+                .thenComparingInt(r -> rank(r.match)));
+        model.fireTableDataChanged();
     }
 
     private String summary(Applier.Result r) {
@@ -653,7 +671,7 @@ public class ReviewPanel extends ToggleDialog {
         for (int step = 1; step <= size; step++) {
             int i = (start + step) % size;
             ReviewTableModel.Row row = model.getRows().get(i);
-            if (row.match != null && needsAttention(row.match)) {
+            if (row.match != null && !row.reviewed && needsAttention(row.match)) {
                 table.setRowSelectionInterval(i, i);
                 table.scrollRectToVisible(table.getCellRect(i, 0, true));
                 return;
@@ -671,26 +689,8 @@ public class ReviewPanel extends ToggleDialog {
         detail.setRow(row, editDataSet());
     }
 
-    /** Правый клик по строке: панорамы и переход к объекту. */
+    /** Правый клик по строке: те же действия, что в подробностях, плюс выделение на карте. */
     private void addRowMenu() {
-        javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu();
-        javax.swing.JMenuItem pano = new javax.swing.JMenuItem("Панорамы");
-        pano.addActionListener(e -> {
-            ReviewTableModel.Row row = selectedRow();
-            if (row != null) {
-                openPanorama(row);
-            }
-        });
-        javax.swing.JMenuItem show = new javax.swing.JMenuItem("На карте");
-        show.addActionListener(e -> {
-            ReviewTableModel.Row row = selectedRow();
-            if (row != null) {
-                showOnMap(row);
-            }
-        });
-        menu.add(pano);
-        menu.add(show);
-
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -706,13 +706,104 @@ public class ReviewPanel extends ToggleDialog {
                 if (!e.isPopupTrigger()) {
                     return;
                 }
-                int row = table.rowAtPoint(e.getPoint());
-                if (row >= 0) {
-                    table.setRowSelectionInterval(row, row);
+                int viewRow = table.rowAtPoint(e.getPoint());
+                if (viewRow < 0) {
+                    return;
                 }
-                menu.show(table, e.getX(), e.getY());
+                table.setRowSelectionInterval(viewRow, viewRow);
+                ReviewTableModel.Row row = model.getRow(table.convertRowIndexToModel(viewRow));
+                if (row != null) {
+                    buildRowMenu(row).show(table, e.getX(), e.getY());
+                }
             }
         });
+    }
+
+    private javax.swing.JPopupMenu buildRowMenu(ReviewTableModel.Row row) {
+        javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu();
+        Match m = row.match;
+
+        javax.swing.JMenuItem accept = new javax.swing.JMenuItem("Принять");
+        accept.setEnabled(m != null && m.canApply()
+                && (m.status == Match.Status.MISSING || m.status == Match.Status.ORPHAN
+                    || hasAccepted(row)));
+        accept.addActionListener(e -> applyRow(row));
+        menu.add(accept);
+
+        javax.swing.JMenuItem skip = new javax.swing.JMenuItem("Пропустить");
+        skip.setEnabled(m != null && m.status != Match.Status.OK);
+        skip.addActionListener(e -> skipRow(row));
+        menu.add(skip);
+
+        menu.addSeparator();
+
+        OsmPrimitive p = m == null ? null : m.primitive;
+        javax.swing.JMenuItem show = new javax.swing.JMenuItem("Показать на карте");
+        show.setEnabled(p != null || row.store != null);
+        show.addActionListener(e -> showOnMap(row));
+        menu.add(show);
+
+        javax.swing.JMenuItem select = new javax.swing.JMenuItem("Выделить на карте");
+        select.setEnabled(p != null);
+        select.addActionListener(e -> {
+            DataSet ds = editDataSet();
+            if (ds != null && p != null) {
+                ds.setSelected(p);
+                ensureVisible(p);
+            }
+        });
+        menu.add(select);
+
+        javax.swing.JMenuItem pano = new javax.swing.JMenuItem("Панорамы");
+        pano.setEnabled(p != null || row.store != null);
+        pano.addActionListener(e -> openPanorama(row));
+        menu.add(pano);
+        return menu;
+    }
+
+    /** Пропустить строку: снять галочку, увести вниз и перейти к следующей. */
+    private void skipRow(ReviewTableModel.Row row) {
+        row.selected = false;
+        row.reviewed = true;
+        resort();
+        selectRow(row);
+        updateDetail();
+        moveToNextReview();
+    }
+
+    private static boolean hasAccepted(ReviewTableModel.Row row) {
+        if (row.match == null) {
+            return false;
+        }
+        if (row.match.status == Match.Status.MISSING || row.match.status == Match.Status.ORPHAN) {
+            return true;
+        }
+        for (FieldDiff d : row.match.diffs) {
+            if (d.accepted) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Выделяет объект, а если он вне кадра — подводит карту без смены масштаба. */
+    private static void ensureVisible(OsmPrimitive p) {
+        MapView mv = MainApplication.getMap() == null ? null : MainApplication.getMap().mapView;
+        if (mv == null) {
+            return;
+        }
+        org.openstreetmap.josm.data.osm.BBox bb = p.getBBox();
+        LatLon c = bb.getCenter();
+        if (c == null) {
+            return;
+        }
+        Bounds view = mv.getRealBounds();
+        if (view != null && view.contains(c)) {
+            return;
+        }
+        double spanLat = view == null ? POINT_SPAN_DEG : view.getHeight();
+        double spanLon = view == null ? POINT_SPAN_DEG : view.getWidth();
+        mv.zoomTo(new Bounds(c, spanLat, spanLon));
     }
 
     private void showOnMap(ReviewTableModel.Row row) {
@@ -790,10 +881,7 @@ public class ReviewPanel extends ToggleDialog {
 
         @Override
         public void onSkip(ReviewTableModel.Row row) {
-            row.selected = false;
-            row.reviewed = true;
-            model.fireTableDataChanged();
-            moveToNextReview();
+            skipRow(row);
         }
 
         @Override
