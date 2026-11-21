@@ -88,6 +88,10 @@ public class ReviewPanel extends ToggleDialog {
     private List<Store> stores = Collections.emptyList();
     /** Сети, данные которых уже применялись: попадут в источник changeset. */
     private final Set<String> usedSources = new LinkedHashSet<>();
+    /** Временная подсветка объекта после «Показать на карте». */
+    private transient OsmPrimitive flashed;
+    private transient boolean flashedWasOn;
+    private transient javax.swing.Timer flashTimer;
 
     public ReviewPanel() {
         super("Сетевые магазины", "chainpoi",
@@ -916,6 +920,32 @@ public class ReviewPanel extends ToggleDialog {
             return;
         }
         MainApplication.getMap().mapView.zoomTo(new Bounds(center, span, span));
+        flash(p);
+    }
+
+    /** Кратко подсвечивает объект, не меняя выделение. */
+    private void flash(OsmPrimitive p) {
+        if (p == null) {
+            return;
+        }
+        if (flashTimer != null) {
+            flashTimer.stop();
+        }
+        clearFlash();
+        flashed = p;
+        flashedWasOn = p.isHighlighted();
+        p.setHighlighted(true);
+        flashTimer = new javax.swing.Timer(2600, e -> clearFlash());
+        flashTimer.setRepeats(false);
+        flashTimer.start();
+    }
+
+    private void clearFlash() {
+        if (flashed != null) {
+            flashed.setHighlighted(flashedWasOn);
+            flashed = null;
+        }
+        flashTimer = null;
     }
 
     private static DataSet editDataSet() {
