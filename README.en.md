@@ -5,7 +5,7 @@
 The plugin checks chain stores against OSM data: what is missing, which tags
 differ, and (per checkbox) creates objects in the current layer.
 
-Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`, `MAGNIT_MARKET`),
+Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
 **M.Kosmetik** (`DG`), **Pyaterochka** (source: the chain's job vacancy database),
 **Krasnoe&Beloe** (the chain's address catalogue) and **Wildberries**
 (one ~75 MB pickup-point file).
@@ -175,7 +175,6 @@ a different tagging scheme for them.
 | API code | What it is | How it is handled |
 |---|---|---|
 | `MM` | Magnit | `shop=supermarket` |
-| `MAGNIT_MARKET` | Magnit (new API type) | `shop=supermarket` |
 | `MC` | Magnit "Moya tsena" | `shop=supermarket` |
 | `GM` | Magnit Semeyny | `shop=supermarket` |
 | `MM_MINI` | Magnit Mini | `shop=convenience` |

@@ -34,8 +34,7 @@ public final class MagnitProvider implements ChainProvider {
 
     /** Все форматы, которые отдаёт API. */
     private static final List<String> ALL_TYPES = Arrays.asList(
-            "MM", "GM", "DG", "MO", "ME", "MC", "DARKSTORE", "MM_MINI", "ZARYAD",
-            "MAGNIT_MARKET");
+            "MM", "GM", "DG", "MO", "ME", "MC", "DARKSTORE", "MM_MINI", "ZARYAD");
 
     /**
      * Что считать магазином какой сети. Остальные форматы (DARKSTORE — Мигом,
@@ -46,8 +45,7 @@ public final class MagnitProvider implements ChainProvider {
             "MC", "supermarket",
             "GM", "supermarket",
             "MM_MINI", "convenience",
-            "DG", "chemist",
-            "MAGNIT_MARKET", "supermarket");
+            "DG", "chemist");
 
     private static final String CHAIN = "Магнит";
     private static final String CHAIN_ID = "magnit";
