@@ -6,9 +6,9 @@ The plugin checks chain stores against OSM data: what is missing, which tags
 differ, and (per checkbox) creates objects in the current layer.
 
 Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`, `MAGNIT_MARKET`),
-**Magnit Apteka** (`DISTR_PHARMACY`), **M.Kosmetik** (`DG`),
-**Pyaterochka** (source: the chain's job vacancy database), **Krasnoe&Beloe**
-(the chain's address catalogue) and **Wildberries** (one ~75 MB pickup-point file).
+**M.Kosmetik** (`DG`), **Pyaterochka** (source: the chain's job vacancy database),
+**Krasnoe&Beloe** (the chain's address catalogue) and **Wildberries**
+(one ~75 MB pickup-point file).
 
 ![Chain stores panel in JOSM](docs/screenshot.png)
 
@@ -170,9 +170,6 @@ For **Wildberries** a pickup point gets `shop=outpost`, `name`/`name:ru`/`brand`
 = Wildberries, `brand:wikidata=Q24933714`. Lockers are not created — OSM uses
 a different tagging scheme for them.
 
-For **Magnit Apteka** — `amenity=pharmacy`, `name`/`name:ru`/`brand`
-= «Магнит Аптека», `brand:wikidata=Q120262563`; the address is not duplicated.
-
 ## Store formats
 
 | API code | What it is | How it is handled |
@@ -183,7 +180,6 @@ For **Magnit Apteka** — `amenity=pharmacy`, `name`/`name:ru`/`brand`
 | `GM` | Magnit Semeyny | `shop=supermarket` |
 | `MM_MINI` | Magnit Mini | `shop=convenience` |
 | `DG` | M.Kosmetik | separate chain, `shop=chemist` |
-| `DISTR_PHARMACY` | Magnit Apteka | separate chain, `amenity=pharmacy` |
 | — | Pyaterochka | `shop=supermarket`, source: vacancies |
 | `DARKSTORE` | Migom | skipped |
 | `ZARYAD` | Zaryad | skipped |

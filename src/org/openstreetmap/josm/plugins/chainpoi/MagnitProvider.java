@@ -35,7 +35,7 @@ public final class MagnitProvider implements ChainProvider {
     /** Все форматы, которые отдаёт API. */
     private static final List<String> ALL_TYPES = Arrays.asList(
             "MM", "GM", "DG", "MO", "ME", "MC", "DARKSTORE", "MM_MINI", "ZARYAD",
-            "MAGNIT_MARKET", "DISTR_PHARMACY");
+            "MAGNIT_MARKET");
 
     /**
      * Что считать магазином какой сети. Остальные форматы (DARKSTORE — Мигом,
@@ -47,17 +47,13 @@ public final class MagnitProvider implements ChainProvider {
             "GM", "supermarket",
             "MM_MINI", "convenience",
             "DG", "chemist",
-            "MAGNIT_MARKET", "supermarket",
-            "DISTR_PHARMACY", "pharmacy");
+            "MAGNIT_MARKET", "supermarket");
 
     private static final String CHAIN = "Магнит";
     private static final String CHAIN_ID = "magnit";
     private static final String KOSMETIK = "М.Косметик";
     private static final String KOSMETIK_ID = "magnit-kosmetik";
     private static final String BRAND_KOSMETIK = "Магнит Косметик";
-    private static final String PHARMACY = "Магнит Аптека";
-    private static final String PHARMACY_ID = "magnit-pharmacy";
-    private static final String BRAND_PHARMACY = "Магнит Аптека";
 
     /** Форматы М.Косметик: отдельная сеть, отдельная разметка. */
     private static boolean isCosmeticType(String type) {
@@ -169,41 +165,27 @@ public final class MagnitProvider implements ChainProvider {
         }
 
         boolean cosmetic = isCosmeticType(type);
-        boolean pharmacy = "DISTR_PHARMACY".equals(type);
         Map<String, String> tags = new LinkedHashMap<>();
-        if (pharmacy) {
-            tags.put("amenity", "pharmacy");
-        } else {
-            tags.put("shop", shop);
-        }
+        tags.put("shop", shop);
         if (cosmetic) {
             tags.put("name", KOSMETIK);
             tags.put("name:ru", KOSMETIK);
             tags.put("brand", BRAND_KOSMETIK);
-        } else if (pharmacy) {
-            tags.put("name", PHARMACY);
-            tags.put("name:ru", PHARMACY);
-            tags.put("brand", BRAND_PHARMACY);
         } else {
             tags.put("name", CHAIN);
             tags.put("name:ru", CHAIN);
             tags.put("name:en", "Magnit");
             tags.put("brand", CHAIN);
         }
-        if (pharmacy) {
-            tags.put("brand:wikidata", "Q120262563");
-        } else {
-            tags.put("brand:wikidata", "Q940518");
-            tags.put("operator", "АО «Тандер»");
-        }
+        tags.put("brand:wikidata", "Q940518");
+        tags.put("operator", "АО «Тандер»");
         String hours = openingHours(o);
         if (hours != null) {
             tags.put("opening_hours", hours);
         }
-        String chainId = cosmetic ? KOSMETIK_ID : pharmacy ? PHARMACY_ID : CHAIN_ID;
-        String chainName = cosmetic ? KOSMETIK : pharmacy ? PHARMACY : CHAIN;
-        return new Store(chainId, chainName, code, o.getString("address", ""),
-                lat, lon, type, tags);
+        return new Store(cosmetic ? KOSMETIK_ID : CHAIN_ID,
+                cosmetic ? KOSMETIK : CHAIN,
+                code, o.getString("address", ""), lat, lon, type, tags);
     }
 
     /**

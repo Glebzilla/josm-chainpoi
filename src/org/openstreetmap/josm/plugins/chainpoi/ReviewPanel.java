@@ -78,7 +78,7 @@ public class ReviewPanel extends ToggleDialog {
 
     /** Сети, для которых есть прямой источник данных. */
     private static final Set<String> DIRECT_CHAINS = Set.of(
-            "magnit", "magnit-kosmetik", "magnit-pharmacy", "pyaterochka",
+            "magnit", "magnit-kosmetik", "pyaterochka",
             "krasnoe-beloe", "wildberries");
 
     /** Сети, загруженные из файла (для них переключателя нет). */
@@ -445,8 +445,6 @@ public class ReviewPanel extends ToggleDialog {
                 return "chain-magnit";
             case "magnit-kosmetik":
                 return "chain-kosmetik";
-            case "magnit-pharmacy":
-                return "chain-pharmacy";
             case "pyaterochka":
                 return "chain-pyaterochka";
             case "krasnoe-beloe":
