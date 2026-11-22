@@ -63,8 +63,10 @@ public class ReviewPanel extends ToggleDialog {
     /** Источники, которые опрашиваются при проверке области. */
     private final KrasnoeBeloeProvider kbProvider = new KrasnoeBeloeProvider();
     private final WildberriesProvider wbProvider = new WildberriesProvider();
+    private final RiglaProvider riglaProvider = new RiglaProvider();
     private final List<ChainProvider> providers = List.of(
-            new MagnitProvider(), new PyaterochkaProvider(), kbProvider, wbProvider);
+            new MagnitProvider(), new PyaterochkaProvider(), kbProvider, wbProvider,
+            riglaProvider);
 
     private final ReviewTableModel model = new ReviewTableModel();
     private final JTable table = new JTable(model);
@@ -79,7 +81,7 @@ public class ReviewPanel extends ToggleDialog {
     /** Сети, для которых есть прямой источник данных. */
     private static final Set<String> DIRECT_CHAINS = Set.of(
             "magnit", "magnit-kosmetik", "pyaterochka",
-            "krasnoe-beloe", "wildberries");
+            "krasnoe-beloe", "wildberries", "rigla");
 
     /** Сети, загруженные из файла (для них переключателя нет). */
     private final Set<String> fileChains = new LinkedHashSet<>();
@@ -276,6 +278,7 @@ public class ReviewPanel extends ToggleDialog {
             wbProvider.setAllowDownload(false);
         }
         wbProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+        riglaProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
 
         checkButton.setEnabled(false);
         applyButton.setEnabled(false);
@@ -455,6 +458,8 @@ public class ReviewPanel extends ToggleDialog {
                 return "chain-ozon-box";
             case "wildberries":
                 return "chain-wildberries";
+            case "rigla":
+                return "chain-rigla";
             default:
                 return "chainpoi";
         }

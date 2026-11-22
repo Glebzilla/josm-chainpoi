@@ -7,8 +7,8 @@ differ, and (per checkbox) creates objects in the current layer.
 
 Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
 **M.Kosmetik** (`DG`), **Pyaterochka** (source: the chain's job vacancy database),
-**Krasnoe&Beloe** (the chain's address catalogue) and **Wildberries**
-(one ~75 MB pickup-point file).
+**Krasnoe&Beloe** (the chain's address catalogue), **Wildberries**
+(one ~75 MB pickup-point file) and **Rigla** (official GraphQL pharmacy list).
 
 ![Chain stores panel in JOSM](docs/screenshot.png)
 
@@ -30,6 +30,7 @@ Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
    For **Wildberries** it is one ~75 MB file (~72k pickup points); permission
    is asked on the first check, cached for 7 days. Parcel lockers are skipped
    for now: in OSM they are `amenity=parcel_locker`, not pickup points.
+   **Rigla** is fetched with one GraphQL request (~1k pharmacies), cached for 7 days.
    For Ozon (and other chains without an open API) there is an **Import…**
    button — see [bookmarklets/README.md](bookmarklets/README.md).
 4. The table lists the results. Statuses:
@@ -169,6 +170,10 @@ not duplicated, same as for Magnit.
 For **Wildberries** a pickup point gets `shop=outpost`, `name`/`name:ru`/`brand`
 = Wildberries, `brand:wikidata=Q24933714`. Lockers are not created — OSM uses
 a different tagging scheme for them.
+
+For **Rigla** — `amenity=pharmacy`, `name`/`name:ru`/`brand` = «Ригла»,
+`brand:wikidata=Q4394431`, `healthcare=pharmacy`. From the group feed only
+points with "Ригла" in the name are used; partner pharmacies are left alone.
 
 ## Store formats
 

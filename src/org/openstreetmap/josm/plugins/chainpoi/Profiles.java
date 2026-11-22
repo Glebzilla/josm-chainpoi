@@ -17,6 +17,7 @@ public final class Profiles {
     private static final String MAGNIT = "Магнит";
     private static final String KOSMETIK = "М.Косметик";
     private static final String KB = "К&Б";
+    private static final String RIGLA = "Ригла";
 
     private static final List<String> MAGNIT_KEYS = List.of(
             "shop", "name", "brand", "brand:wikidata", "operator", "opening_hours");
@@ -28,6 +29,8 @@ public final class Profiles {
             "amenity", "name", "brand", "brand:wikidata", "operator");
     private static final List<String> KB_KEYS = List.of(
             "shop", "name", "name:ru", "brand", "brand:wikidata", "opening_hours");
+    private static final List<String> RIGLA_KEYS = List.of(
+            "amenity", "name", "name:ru", "brand", "brand:wikidata");
 
     private static final Profile MAGNIT_PROFILE = new Profile(
             "magnit", MAGNIT, MAGNIT_KEYS,
@@ -52,6 +55,9 @@ public final class Profiles {
     private static final List<Profile> ALL = List.of(
             MAGNIT_PROFILE,
             KOSMETIK_PROFILE,
+            new Profile("rigla", RIGLA, RIGLA_KEYS,
+                    Profiles::isRigla,
+                    store -> new LinkedHashMap<>(store.tags), null),
             new Profile("krasnoe-beloe", KB, KB_KEYS,
                     Profiles::isKrasnoeBeloe,
                     store -> new LinkedHashMap<>(store.tags), null),
@@ -101,6 +107,11 @@ public final class Profiles {
     /** Обычный Магнит: «Магнит», но не «Магнит Косметик» и не «Магнит Аптека». */
     static boolean isPlainMagnit(OsmPrimitive p) {
         return plainMagnit(p.get("brand")) || plainMagnit(p.get("name"));
+    }
+
+    /** Ригла: аптека с «Ригла» в названии или бренде. */
+    static boolean isRigla(OsmPrimitive p) {
+        return contains(p.get("brand"), "ригла") || contains(p.get("name"), "ригла");
     }
 
     /** М.Косметик: в названии или бренде есть «косметик», но это не «М.Кос». */

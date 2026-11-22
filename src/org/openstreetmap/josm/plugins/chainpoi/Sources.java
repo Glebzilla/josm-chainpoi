@@ -37,6 +37,8 @@ public final class Sources {
                 return "ozon.ru";
             case "wildberries":
                 return "wildberries.ru";
+            case "rigla":
+                return "rigla.ru";
             default:
                 return null;
         }
