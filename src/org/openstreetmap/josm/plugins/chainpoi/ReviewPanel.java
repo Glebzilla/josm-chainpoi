@@ -647,6 +647,7 @@ public class ReviewPanel extends ToggleDialog {
         run(result);
         row.selected = false;
         row.reviewed = true;
+        row.skipped = false;
 
         if (row.store != null) {
             row.match = Matcher.check(row.store, ds);
@@ -980,6 +981,7 @@ public class ReviewPanel extends ToggleDialog {
     private void skipRow(ReviewTableModel.Row row) {
         row.selected = false;
         row.reviewed = true;
+        row.skipped = true;
         resort();
         selectRow(row);
         updateDetail();
@@ -1273,7 +1275,9 @@ public class ReviewPanel extends ToggleDialog {
             if (!isSelected && column == 1) {
                 ReviewTableModel.Row r = model.getRow(t.convertRowIndexToModel(row));
                 if (r != null && r.match != null) {
-                    if (ReviewTableModel.isCreated(r)) {
+                    if (r.skipped) {
+                        c.setForeground(java.awt.Color.GRAY);
+                    } else if (ReviewTableModel.isCreated(r)) {
                         c.setForeground(BLUE);
                     } else {
                         switch (r.match.status) {

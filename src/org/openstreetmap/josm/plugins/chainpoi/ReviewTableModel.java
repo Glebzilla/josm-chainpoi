@@ -23,6 +23,8 @@ public class ReviewTableModel extends AbstractTableModel {
         public boolean selected;
         /** Строку уже разобрали (приняли или пропустили) — уходит вниз списка. */
         public boolean reviewed;
+        /** Строку именно пропустили: показываем это в статусе. */
+        public boolean skipped;
         /** Что уже применили: старые и новые значения для зачёркивания. */
         public final List<FieldDiff> applied = new ArrayList<>();
 
@@ -121,6 +123,9 @@ public class ReviewTableModel extends AbstractTableModel {
             case 0:
                 return r.selected;
             case 1:
+                if (r.skipped) {
+                    return "пропущен";
+                }
                 return isCreated(r) ? "создан" : r.match == null ? "" : r.match.text();
             case 2:
                 return r.title();

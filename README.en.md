@@ -37,6 +37,8 @@ Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`), **M.Kosmetik** (`DG`
    - `mapping error` — the store is placed on a building outline or on an entrance;
    - `ok` — everything matches;
    - `created` — the point was created in this layer and not uploaded yet;
+   - `skipped` — the row was skipped; with sorting off it stays in place and is
+     shown in grey;
    - `not checked` — a chain object exists in OSM, but the source is incomplete
      (Pyaterochka vacancies): nothing to compare, view/panoramas only;
      only objects inside the checked area are listed;
