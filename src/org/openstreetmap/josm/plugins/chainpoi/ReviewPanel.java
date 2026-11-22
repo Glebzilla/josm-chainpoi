@@ -89,6 +89,8 @@ public class ReviewPanel extends ToggleDialog {
 
     /** Переключатели сетей: нажатая кнопка — сеть проверяется. */
     private final Map<String, JToggleButton> chainBoxes = new LinkedHashMap<>();
+    /** Какие цепочки включает каждый переключатель (у групп их несколько). */
+    private final Map<String, List<String>> boxChains = new LinkedHashMap<>();
 
     private List<Store> stores = Collections.emptyList();
     /** Область последней проверки: строки «в OSM» и «закрылся» только по ней. */
@@ -375,9 +377,10 @@ public class ReviewPanel extends ToggleDialog {
     /** Ряд переключателей под кнопками: какие сети проверять. */
     private JPanel buildChainRow() {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        java.util.Set<String> groupsDone = new java.util.HashSet<>();
         for (Profile profile : Profiles.all()) {
-            javax.swing.Icon icon = org.openstreetmap.josm.tools.ImageProvider.get(iconFor(profile.id));
             if (!DIRECT_CHAINS.contains(profile.id)) {
+                javax.swing.Icon icon = org.openstreetmap.josm.tools.ImageProvider.get(iconFor(profile.id));
                 javax.swing.JLabel hintLabel = new javax.swing.JLabel(profile.name, greyIcon(icon),
                         javax.swing.SwingConstants.LEADING);
                 hintLabel.setForeground(new java.awt.Color(0x99, 0x99, 0x99));
@@ -387,28 +390,60 @@ public class ReviewPanel extends ToggleDialog {
                 row.add(hintLabel);
                 continue;
             }
-            JToggleButton box = new JToggleButton(profile.name, icon);
+
+            String key;
+            String label;
+            String iconName;
+            List<String> ids;
+            boolean onByDefault;
+            if (profile.group != null) {
+                if (!groupsDone.add(profile.group)) {
+                    continue;
+                }
+                key = "group:" + profile.group;
+                label = profile.group;
+                iconName = "chain-pharmacy";
+                ids = new ArrayList<>();
+                for (Profile p : Profiles.all()) {
+                    if (DIRECT_CHAINS.contains(p.id) && profile.group.equals(p.group)) {
+                        ids.add(p.id);
+                    }
+                }
+                onByDefault = true;
+            } else {
+                key = profile.id;
+                label = profile.name;
+                iconName = iconFor(profile.id);
+                ids = List.of(profile.id);
+                onByDefault = !"krasnoe-beloe".equals(profile.id)
+                        && !"wildberries".equals(profile.id);
+            }
+
+            javax.swing.Icon icon = org.openstreetmap.josm.tools.ImageProvider.get(iconName);
+            JToggleButton box = new JToggleButton(label, icon);
             box.putClientProperty("icon-on", icon);
             box.putClientProperty("icon-off", greyIcon(icon));
-            boolean onByDefault = !"krasnoe-beloe".equals(profile.id)
-                    && !"wildberries".equals(profile.id);
             box.setSelected(onByDefault);
             box.setFocusable(false);
             box.setMargin(new java.awt.Insets(1, 4, 1, 4));
-            box.setToolTipText("Проверять сеть «" + profile.name + "»"
-                    + ("krasnoe-beloe".equals(profile.id)
-                       ? " — при первой проверке данные качаются по регионам (~6–7 МБ)"
-                       : "wildberries".equals(profile.id)
-                       ? " — при первой проверке качается общий справочник (~75 МБ)" : ""));
+            String tip = profile.group != null
+                    ? "Проверять все сети группы «" + label + "»"
+                    : "Проверять сеть «" + label + "»"
+                      + ("krasnoe-beloe".equals(profile.id)
+                         ? " — при первой проверке данные качаются по регионам (~6–7 МБ)"
+                         : "wildberries".equals(profile.id)
+                         ? " — при первой проверке качается общий справочник (~75 МБ)" : "");
+            box.setToolTipText(tip);
             box.addActionListener(e -> {
                 styleChain(box);
                 updateEnabledChains();
                 rebuild();
             });
             styleChain(box);
-            chainBoxes.put(profile.id, box);
+            chainBoxes.put(key, box);
+            boxChains.put(key, ids);
             if (onByDefault) {
-                enabledChains.add(profile.id);
+                enabledChains.addAll(ids);
             }
             row.add(box);
         }
@@ -436,7 +471,10 @@ public class ReviewPanel extends ToggleDialog {
         enabledChains.clear();
         for (Map.Entry<String, JToggleButton> e : chainBoxes.entrySet()) {
             if (e.getValue().isSelected()) {
-                enabledChains.add(e.getKey());
+                List<String> ids = boxChains.get(e.getKey());
+                if (ids != null) {
+                    enabledChains.addAll(ids);
+                }
             }
         }
         enabledChains.addAll(fileChains);

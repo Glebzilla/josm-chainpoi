@@ -57,7 +57,8 @@ public final class Profiles {
             KOSMETIK_PROFILE,
             new Profile("rigla", RIGLA, RIGLA_KEYS,
                     Profiles::isRigla,
-                    store -> new LinkedHashMap<>(store.tags), null),
+                    store -> new LinkedHashMap<>(store.tags), null)
+                    .inGroup("Аптеки"),
             new Profile("krasnoe-beloe", KB, KB_KEYS,
                     Profiles::isKrasnoeBeloe,
                     store -> new LinkedHashMap<>(store.tags), null),

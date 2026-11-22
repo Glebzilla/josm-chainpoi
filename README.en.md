@@ -31,6 +31,7 @@ Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
    is asked on the first check, cached for 7 days. Parcel lockers are skipped
    for now: in OSM they are `amenity=parcel_locker`, not pickup points.
    **Rigla** is fetched with one GraphQL request (~1k pharmacies), cached for 7 days.
+   All pharmacy chains share one **Аптеки** toggle (the “+” icon).
    For Ozon (and other chains without an open API) there is an **Import…**
    button — see [bookmarklets/README.md](bookmarklets/README.md).
 4. The table lists the results. Statuses:

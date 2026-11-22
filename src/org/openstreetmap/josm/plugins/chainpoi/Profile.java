@@ -38,9 +38,18 @@ public final class Profile {
     /** Постоянная пометка о источнике (показывается в подробностях). */
     public String note;
 
+    /** Группа для одного переключателя, например «Аптеки». */
+    public String group;
+
     /** Помечает источник неполным (цепочка вызовов при создании профиля). */
     public Profile incompleteSource() {
         this.completeSource = false;
+        return this;
+    }
+
+    /** Несколько сетей под одним переключателем. */
+    public Profile inGroup(String groupName) {
+        this.group = groupName;
         return this;
     }
 
