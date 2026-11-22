@@ -374,9 +374,25 @@ public class ReviewPanel extends ToggleDialog {
         return out;
     }
 
+    /** Короткая подпись на кнопке: полное имя — в подсказке. */
+    private static String shortChainName(String chainId, String fallback) {
+        switch (chainId) {
+            case "magnit-kosmetik":
+                return "М.Кос";
+            case "pyaterochka":
+                return "5ка";
+            case "wildberries":
+                return "WB";
+            case "krasnoe-beloe":
+                return "К&Б";
+            default:
+                return fallback;
+        }
+    }
+
     /** Ряд переключателей под кнопками: какие сети проверять. */
     private JPanel buildChainRow() {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         java.util.Set<String> groupsDone = new java.util.HashSet<>();
         for (Profile profile : Profiles.all()) {
             if (!DIRECT_CHAINS.contains(profile.id)) {
@@ -412,7 +428,7 @@ public class ReviewPanel extends ToggleDialog {
                 onByDefault = true;
             } else {
                 key = profile.id;
-                label = profile.name;
+                label = shortChainName(profile.id, profile.name);
                 iconName = iconFor(profile.id);
                 ids = List.of(profile.id);
                 onByDefault = !"krasnoe-beloe".equals(profile.id)
@@ -425,10 +441,10 @@ public class ReviewPanel extends ToggleDialog {
             box.putClientProperty("icon-off", greyIcon(icon));
             box.setSelected(onByDefault);
             box.setFocusable(false);
-            box.setMargin(new java.awt.Insets(1, 4, 1, 4));
+            box.setMargin(new java.awt.Insets(1, 3, 1, 3));
             String tip = profile.group != null
                     ? "Проверять все сети группы «" + label + "»"
-                    : "Проверять сеть «" + label + "»"
+                    : "Проверять сеть «" + profile.name + "»"
                       + ("krasnoe-beloe".equals(profile.id)
                          ? " — при первой проверке данные качаются по регионам (~6–7 МБ)"
                          : "wildberries".equals(profile.id)
