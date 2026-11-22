@@ -62,8 +62,9 @@ public class ReviewPanel extends ToggleDialog {
 
     /** Источники, которые опрашиваются при проверке области. */
     private final KrasnoeBeloeProvider kbProvider = new KrasnoeBeloeProvider();
+    private final WildberriesProvider wbProvider = new WildberriesProvider();
     private final List<ChainProvider> providers = List.of(
-            new MagnitProvider(), new PyaterochkaProvider(), kbProvider);
+            new MagnitProvider(), new PyaterochkaProvider(), kbProvider, wbProvider);
 
     private final ReviewTableModel model = new ReviewTableModel();
     private final JTable table = new JTable(model);
@@ -77,7 +78,7 @@ public class ReviewPanel extends ToggleDialog {
 
     /** Сети, для которых есть прямой источник данных. */
     private static final Set<String> DIRECT_CHAINS = Set.of(
-            "magnit", "magnit-kosmetik", "pyaterochka", "krasnoe-beloe");
+            "magnit", "magnit-kosmetik", "pyaterochka", "krasnoe-beloe", "wildberries");
 
     /** Сети, загруженные из файла (для них переключателя нет). */
     private final Set<String> fileChains = new LinkedHashSet<>();
@@ -258,6 +259,23 @@ public class ReviewPanel extends ToggleDialog {
         }
         kbProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
 
+        if (enabledChains.contains("wildberries")) {
+            if (!wbProvider.hasFreshCache()) {
+                int answer = JOptionPane.showConfirmDialog(this,
+                        "Загрузить справочник Wildberries?\n\n"
+                        + "Один файл ~75 МБ, около 72 тыс. ПВЗ (постаматы пропускаются).\n"
+                        + "Кэш хранится 7 дней, без загрузки сеть не проверяется.",
+                        "Сетевые магазины", JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+                wbProvider.setAllowDownload(answer == JOptionPane.YES_OPTION);
+            } else {
+                wbProvider.setAllowDownload(true);
+            }
+        } else {
+            wbProvider.setAllowDownload(false);
+        }
+        wbProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+
         checkButton.setEnabled(false);
         applyButton.setEnabled(false);
         status.setText("Запрос к Магниту…");
@@ -368,13 +386,16 @@ public class ReviewPanel extends ToggleDialog {
             JToggleButton box = new JToggleButton(profile.name, icon);
             box.putClientProperty("icon-on", icon);
             box.putClientProperty("icon-off", greyIcon(icon));
-            boolean onByDefault = !"krasnoe-beloe".equals(profile.id);
+            boolean onByDefault = !"krasnoe-beloe".equals(profile.id)
+                    && !"wildberries".equals(profile.id);
             box.setSelected(onByDefault);
             box.setFocusable(false);
             box.setMargin(new java.awt.Insets(1, 4, 1, 4));
             box.setToolTipText("Проверять сеть «" + profile.name + "»"
                     + ("krasnoe-beloe".equals(profile.id)
-                       ? " — при первой проверке данные качаются по регионам (~6–7 МБ)" : ""));
+                       ? " — при первой проверке данные качаются по регионам (~6–7 МБ)"
+                       : "wildberries".equals(profile.id)
+                       ? " — при первой проверке качается общий справочник (~75 МБ)" : ""));
             box.addActionListener(e -> {
                 styleChain(box);
                 updateEnabledChains();

@@ -6,9 +6,8 @@ The plugin checks chain stores against OSM data: what is missing, which tags
 differ, and (per checkbox) creates objects in the current layer.
 
 Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`), **M.Kosmetik** (`DG`),
-**Pyaterochka** (source: the chain's job vacancy database) and **Krasnoe&Beloe**
-(the chain's address catalogue; on the first check the data is downloaded by
-region, ~6–7 MB).
+**Pyaterochka** (source: the chain's job vacancy database), **Krasnoe&Beloe**
+(the chain's address catalogue) and **Wildberries** (one ~75 MB pickup-point file).
 
 ![Chain stores panel in JOSM](docs/screenshot.png)
 
@@ -27,8 +26,11 @@ region, ~6–7 MB).
    For **Krasnoe&Beloe** the plugin asks permission on the first check: about
    75 requests to the chain's catalogue, 6–7 MB, cached for 7 days. If you
    decline, the chain is skipped for this check.
-   For Ozon and Wildberries there is an **Import…** button — see
-   [bookmarklets/README.md](bookmarklets/README.md).
+   For **Wildberries** it is one ~75 MB file (~72k pickup points); permission
+   is asked on the first check, cached for 7 days. Parcel lockers are skipped
+   for now: in OSM they are `amenity=parcel_locker`, not pickup points.
+   For Ozon (and other chains without an open API) there is an **Import…**
+   button — see [bookmarklets/README.md](bookmarklets/README.md).
 4. The table lists the results. Statuses:
    - `not in OSM` — no object, a point can be created;
    - `differences: N` — the object exists, but tag values differ;
@@ -160,6 +162,10 @@ For **Krasnoe&Beloe** a new point gets `shop=alcohol`, `name`/`name:ru` and
 `brand` = «Красное&Белое», `brand:wikidata=Q24933790`, `opening_hours` from the
 catalogue. 98% of the chain's OSM objects are tagged this way; the address is
 not duplicated, same as for Magnit.
+
+For **Wildberries** a pickup point gets `shop=outpost`, `name`/`name:ru`/`brand`
+= Wildberries, `brand:wikidata=Q24933714`. Lockers are not created — OSM uses
+a different tagging scheme for them.
 
 ## Store formats
 
