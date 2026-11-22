@@ -418,11 +418,22 @@ public class ReviewPanel extends ToggleDialog {
             }
         }
         List<ReviewTableModel.Row> rows = new ArrayList<>();
+        Set<OsmPrimitive> used = new java.util.HashSet<>();
         for (Store s : active) {
-            rows.add(new ReviewTableModel.Row(s, Matcher.check(s, ds)));
+            Match m = Matcher.check(s, ds);
+            rows.add(new ReviewTableModel.Row(s, m));
+            if (m != null && m.primitive != null) {
+                used.add(m.primitive);
+            }
         }
         for (Match orphan : Matcher.orphans(active, ds)) {
             rows.add(new ReviewTableModel.Row(null, orphan));
+            if (orphan.primitive != null) {
+                used.add(orphan.primitive);
+            }
+        }
+        for (Match onlyOsm : Matcher.unreviewedOsm(ds, enabledChains, used)) {
+            rows.add(new ReviewTableModel.Row(null, onlyOsm));
         }
         if (sortEnabled) {
             rows.sort(Comparator
@@ -487,6 +498,7 @@ public class ReviewPanel extends ToggleDialog {
         int orphan = 0;
         int other = 0;
         int created = 0;
+        int noData = 0;
         for (ReviewTableModel.Row r : model.getRows()) {
             if (r.match == null) {
                 continue;
@@ -515,6 +527,9 @@ public class ReviewPanel extends ToggleDialog {
                 case OTHER_FORMAT:
                     other++;
                     break;
+                case NO_DATA:
+                    noData++;
+                    break;
                 default:
                     break;
             }
@@ -522,7 +537,8 @@ public class ReviewPanel extends ToggleDialog {
         status.setText("Всего " + model.getRows().size()
                 + ": нет в OSM " + missing + ", расхождения " + diff
                 + ", ошибки " + bad + ", ок " + ok + ", нет в сети " + orphan
-                + ", другое " + other + ", создано " + created);
+                + ", другое " + other + ", создано " + created
+                + ", не проверено " + noData);
     }
 
     // ------------------------------------------------------------------
@@ -1222,6 +1238,9 @@ public class ReviewPanel extends ToggleDialog {
                             break;
                         case ORPHAN:
                             c.setForeground(VIOLET);
+                            break;
+                        case NO_DATA:
+                            c.setForeground(java.awt.Color.GRAY);
                             break;
                         default:
                             break;

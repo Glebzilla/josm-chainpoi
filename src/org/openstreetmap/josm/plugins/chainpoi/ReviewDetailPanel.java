@@ -289,12 +289,14 @@ public class ReviewDetailPanel extends JPanel {
         diffCards.show(diffArea, hasFields ? CARD_TABLE : CARD_NONE);
         if (m.status == Match.Status.OK) {
             noDiffs.setText("Все теги совпадают");
+        } else if (m.status == Match.Status.NO_DATA) {
+            noDiffs.setText("Данных сети нет — сверять нечего");
         } else if (m.status == Match.Status.OTHER_FORMAT) {
             noDiffs.setText("Часы работы не указаны");
         } else {
             noDiffs.setText("Нечего показывать");
         }
-        accept.setVisible(m.status != Match.Status.ORPHAN);
+        accept.setVisible(m.status != Match.Status.ORPHAN && m.status != Match.Status.NO_DATA);
         accept.setEnabled(m.canApply() && hasAccepted());
         close.setVisible(m.status == Match.Status.ORPHAN);
         skip.setEnabled(m.status != Match.Status.OK);

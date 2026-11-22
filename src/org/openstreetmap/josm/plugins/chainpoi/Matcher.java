@@ -193,6 +193,31 @@ public final class Matcher {
         return out;
     }
 
+    /**
+     * Объекты сетей с неполным источником (Пятёрочка), которые не с чем сверять.
+     * Показываем их отдельно, чтобы человек мог посмотреть/панорамы, но
+     * «закрылся» по ним не предлагаем.
+     */
+    public static List<Match> unreviewedOsm(DataSet ds, Collection<String> chains,
+                                            Collection<OsmPrimitive> used) {
+        List<Match> out = new ArrayList<>();
+        if (ds == null || chains == null) {
+            return out;
+        }
+        for (OsmPrimitive p : chainPrimitives(ds)) {
+            if (used != null && used.contains(p)) {
+                continue;
+            }
+            Profile profile = Profiles.find(p);
+            if (profile == null || profile.completeSource || !chains.contains(profile.id)) {
+                continue;
+            }
+            out.add(Match.noData(p, -1,
+                    List.of("Источник сети неполный (вакансии): объект в OSM не с чем сверять.")));
+        }
+        return out;
+    }
+
     /** Ближайший объект «М.Кос» в пределах общего радиуса поиска. */
     private static OsmPrimitive findMKos(Store store, DataSet ds) {
         OsmPrimitive best = null;

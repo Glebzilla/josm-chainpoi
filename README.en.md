@@ -30,6 +30,8 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    - `mapping error` — the store is placed on a building outline or on an entrance;
    - `ok` — everything matches;
    - `created` — the point was created in this layer and not uploaded yet;
+   - `not checked` — a chain object exists in OSM, but the source is incomplete
+     (Pyaterochka vacancies): nothing to compare, view/panoramas only;
    - `not in chain data` — OSM has a store the chain doesn't have here
      (possibly closed);
    - `other format` — a nearby `М.Кос` (beauty format), not M.Kosmetik;

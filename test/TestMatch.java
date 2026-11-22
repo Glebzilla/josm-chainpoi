@@ -31,6 +31,17 @@ public class TestMatch {
         report("empty", store, Matcher.check(store, new DataSet()));
         report("full node", store, nodeWith(store, store.tags, store.lat, store.lon));
 
+        DataSet pyat = new DataSet();
+        Node pyatNode = new Node(new LatLon(55.8226, 49.5142));
+        pyatNode.put("name", "Пятёрочка");
+        pyatNode.put("shop", "supermarket");
+        pyat.addPrimitive(pyatNode);
+        List<Match> unchecked = Matcher.unreviewedOsm(pyat, List.of("pyaterochka"),
+                java.util.Set.of());
+        System.out.println("unreviewed pyat: " + unchecked.size()
+                + (unchecked.isEmpty() ? "" : " " + unchecked.get(0).status
+                + " / " + unchecked.get(0).text()));
+
         Map<String, String> wrongHours = new java.util.LinkedHashMap<>(store.tags);
         wrongHours.put("opening_hours", "Mo-Su 09:00-21:00");
         report("wrong hours", store, nodeWith(store, wrongHours, store.lat, store.lon));

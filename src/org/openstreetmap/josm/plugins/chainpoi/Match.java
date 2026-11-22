@@ -54,6 +54,11 @@ public final class Match {
         return new Match(Status.NO_DATA, null, -1, Collections.emptyList(), Collections.emptyList());
     }
 
+    /** Объект в OSM, который не с чем сверять: у сети нет полного списка. */
+    public static Match noData(OsmPrimitive p, double distance, List<String> warnings) {
+        return new Match(Status.NO_DATA, p, distance, Collections.emptyList(), warnings);
+    }
+
     public static Match orphan(OsmPrimitive p, double distance, List<String> warnings) {
         return new Match(Status.ORPHAN, p, distance, Collections.emptyList(), warnings);
     }
@@ -81,6 +86,8 @@ public final class Match {
                         || primitive.get("name").isEmpty()
                         ? "другое"
                         : "другое: " + primitive.get("name");
+            case NO_DATA:
+                return "не проверено";
             default:
                 return "нет данных";
         }
