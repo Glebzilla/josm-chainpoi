@@ -16,6 +16,7 @@ public final class Profiles {
 
     private static final String MAGNIT = "Магнит";
     private static final String KOSMETIK = "М.Косметик";
+    private static final String KB = "К&Б";
 
     private static final List<String> MAGNIT_KEYS = List.of(
             "shop", "name", "brand", "brand:wikidata", "operator", "opening_hours");
@@ -25,6 +26,8 @@ public final class Profiles {
             "shop", "name", "brand", "brand:wikidata", "operator", "opening_hours");
     private static final List<String> LOCKER_KEYS = List.of(
             "amenity", "name", "brand", "brand:wikidata", "operator");
+    private static final List<String> KB_KEYS = List.of(
+            "shop", "name", "name:ru", "brand", "brand:wikidata", "opening_hours");
 
     private static final Profile MAGNIT_PROFILE = new Profile(
             "magnit", MAGNIT, MAGNIT_KEYS,
@@ -49,6 +52,9 @@ public final class Profiles {
     private static final List<Profile> ALL = List.of(
             MAGNIT_PROFILE,
             KOSMETIK_PROFILE,
+            new Profile("krasnoe-beloe", KB, KB_KEYS,
+                    Profiles::isKrasnoeBeloe,
+                    store -> new LinkedHashMap<>(store.tags), null),
             new Profile("pyaterochka", "Пятёрочка", SHOP_KEYS,
                     p -> shopNamed(p, "пятерочка"),
                     store -> new LinkedHashMap<>(store.tags), null)
@@ -103,6 +109,19 @@ public final class Profiles {
             return false;
         }
         return kosmetik(p.get("brand")) || kosmetik(p.get("name"));
+    }
+
+    /** «Красное&Белое»: brand/name, допускаем пробелы и разные амперсанды. */
+    static boolean isKrasnoeBeloe(OsmPrimitive p) {
+        return kbName(p.get("brand")) || kbName(p.get("name"));
+    }
+
+    private static boolean kbName(String value) {
+        if (value == null) {
+            return false;
+        }
+        String t = basic(value).replace(" ", "").replace("&", "");
+        return t.contains("красноебелое");
     }
 
     /** «М.Кос» — бьюти-формат, не М.Косметик; такие объекты не трогаем. */

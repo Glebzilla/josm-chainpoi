@@ -5,8 +5,10 @@
 The plugin checks chain stores against OSM data: what is missing, which tags
 differ, and (per checkbox) creates objects in the current layer.
 
-Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`), **M.Kosmetik** (`DG`)
-and **Pyaterochka** (source: the chain's job vacancy database).
+Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`), **M.Kosmetik** (`DG`),
+**Pyaterochka** (source: the chain's job vacancy database) and **Krasnoe&Beloe**
+(the chain's address catalogue; on the first check the data is downloaded by
+region, ~6–7 MB).
 
 ![Chain stores panel in JOSM](docs/screenshot.png)
 
@@ -22,6 +24,9 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    stores are mixed together.
    Magnit, M.Kosmetik and Pyaterochka are queried directly. Pyaterochka comes
    from the rabota5ka.ru vacancy database, so only stores that are hiring appear.
+   For **Krasnoe&Beloe** the plugin asks permission on the first check: about
+   75 requests to the chain's catalogue, 6–7 MB, cached for 7 days. If you
+   decline, the chain is skipped for this check.
    For Ozon and Wildberries there is an **Import…** button — see
    [bookmarklets/README.md](bookmarklets/README.md).
 4. The table lists the results. Statuses:
@@ -150,6 +155,11 @@ The set matches the Magnit preset in iD/NSI (`shop`, `brand`, `brand:wikidata`,
 `name`, `name:ru`, `name:en`) plus `operator` and `opening_hours`. `brand:en`/`brand:ru`,
 chain contacts and `brand:wikipedia` from the Russian preset are intentionally
 not added.
+
+For **Krasnoe&Beloe** a new point gets `shop=alcohol`, `name`/`name:ru` and
+`brand` = «Красное&Белое», `brand:wikidata=Q24933790`, `opening_hours` from the
+catalogue. 98% of the chain's OSM objects are tagged this way; the address is
+not duplicated, same as for Magnit.
 
 ## Store formats
 

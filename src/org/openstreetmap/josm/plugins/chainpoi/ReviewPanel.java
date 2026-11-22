@@ -61,8 +61,9 @@ public class ReviewPanel extends ToggleDialog {
     private static final int PANO_COLUMN = 5;
 
     /** Источники, которые опрашиваются при проверке области. */
-    private static final List<ChainProvider> PROVIDERS = List.of(
-            new MagnitProvider(), new PyaterochkaProvider());
+    private final KrasnoeBeloeProvider kbProvider = new KrasnoeBeloeProvider();
+    private final List<ChainProvider> providers = List.of(
+            new MagnitProvider(), new PyaterochkaProvider(), kbProvider);
 
     private final ReviewTableModel model = new ReviewTableModel();
     private final JTable table = new JTable(model);
@@ -76,7 +77,7 @@ public class ReviewPanel extends ToggleDialog {
 
     /** Сети, для которых есть прямой источник данных. */
     private static final Set<String> DIRECT_CHAINS = Set.of(
-            "magnit", "magnit-kosmetik", "pyaterochka");
+            "magnit", "magnit-kosmetik", "pyaterochka", "krasnoe-beloe");
 
     /** Сети, загруженные из файла (для них переключателя нет). */
     private final Set<String> fileChains = new LinkedHashSet<>();
@@ -240,6 +241,23 @@ public class ReviewPanel extends ToggleDialog {
             return;
         }
 
+        if (enabledChains.contains("krasnoe-beloe")) {
+            if (!kbProvider.hasFreshCache()) {
+                int answer = JOptionPane.showConfirmDialog(this,
+                        "Загрузить данные «Красное&Белое»?\n\n"
+                        + "Около 76 запросов к krasnoeibeloe.ru, 6–7 МБ.\n"
+                        + "Кэш хранится 7 дней, без загрузки сеть не проверяется.",
+                        "Сетевые магазины", JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+                kbProvider.setAllowDownload(answer == JOptionPane.YES_OPTION);
+            } else {
+                kbProvider.setAllowDownload(true);
+            }
+        } else {
+            kbProvider.setAllowDownload(false);
+        }
+        kbProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+
         checkButton.setEnabled(false);
         applyButton.setEnabled(false);
         status.setText("Запрос к Магниту…");
@@ -248,7 +266,7 @@ public class ReviewPanel extends ToggleDialog {
         new Thread(() -> {
             try {
                 List<Store> fetched = new ArrayList<>();
-                for (ChainProvider provider : PROVIDERS) {
+                for (ChainProvider provider : providers) {
                     try {
                         fetched.addAll(provider.fetch(query));
                     } catch (Exception ex) {
@@ -350,10 +368,13 @@ public class ReviewPanel extends ToggleDialog {
             JToggleButton box = new JToggleButton(profile.name, icon);
             box.putClientProperty("icon-on", icon);
             box.putClientProperty("icon-off", greyIcon(icon));
-            box.setSelected(true);
+            boolean onByDefault = !"krasnoe-beloe".equals(profile.id);
+            box.setSelected(onByDefault);
             box.setFocusable(false);
             box.setMargin(new java.awt.Insets(1, 4, 1, 4));
-            box.setToolTipText("Проверять сеть «" + profile.name + "»");
+            box.setToolTipText("Проверять сеть «" + profile.name + "»"
+                    + ("krasnoe-beloe".equals(profile.id)
+                       ? " — при первой проверке данные качаются по регионам (~6–7 МБ)" : ""));
             box.addActionListener(e -> {
                 styleChain(box);
                 updateEnabledChains();
@@ -361,7 +382,9 @@ public class ReviewPanel extends ToggleDialog {
             });
             styleChain(box);
             chainBoxes.put(profile.id, box);
-            enabledChains.add(profile.id);
+            if (onByDefault) {
+                enabledChains.add(profile.id);
+            }
             row.add(box);
         }
         return row;
@@ -402,6 +425,8 @@ public class ReviewPanel extends ToggleDialog {
                 return "chain-kosmetik";
             case "pyaterochka":
                 return "chain-pyaterochka";
+            case "krasnoe-beloe":
+                return "chain-kb";
             case "ozon":
                 return "chain-ozon";
             case "ozon-box":

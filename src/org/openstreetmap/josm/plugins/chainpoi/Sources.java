@@ -30,6 +30,8 @@ public final class Sources {
                 return "magnit.ru";
             case "pyaterochka":
                 return "rabota5ka.ru";
+            case "krasnoe-beloe":
+                return "krasnoeibeloe.ru";
             case "ozon":
             case "ozon-box":
                 return "ozon.ru";

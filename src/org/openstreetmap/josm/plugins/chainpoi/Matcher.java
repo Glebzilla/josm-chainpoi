@@ -406,7 +406,9 @@ public final class Matcher {
     }
 
     private static String normHours(String s) {
-        return basic(s).replaceAll("\\s+", "");
+        String t = basic(s).replaceAll("\\s+", "");
+        // OSM часто пишет без дней недели: 09:00-22:05 ≡ Mo-Su 09:00-22:05.
+        return t.startsWith("mo-su") ? t.substring(5) : t;
     }
 
     private static String normOperator(String s) {
