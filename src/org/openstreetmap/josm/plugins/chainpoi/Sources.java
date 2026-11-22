@@ -27,6 +27,7 @@ public final class Sources {
         switch (chainId) {
             case "magnit":
             case "magnit-kosmetik":
+            case "magnit-pharmacy":
                 return "magnit.ru";
             case "pyaterochka":
                 return "rabota5ka.ru";
