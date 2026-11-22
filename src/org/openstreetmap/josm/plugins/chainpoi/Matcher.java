@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
@@ -139,6 +140,11 @@ public final class Matcher {
      * Скорее всего закрылись, но расстояние может быть большим — решает человек.
      */
     public static List<Match> orphans(Collection<Store> stores, DataSet ds) {
+        return orphans(stores, ds, null);
+    }
+
+    /** То же, но только объекты внутри проверенной области. */
+    public static List<Match> orphans(Collection<Store> stores, DataSet ds, Bounds area) {
         List<Match> out = new ArrayList<>();
         if (ds == null || stores == null) {
             return out;
@@ -148,7 +154,7 @@ public final class Matcher {
             loaded.add(s.chainId);
         }
         for (OsmPrimitive p : chainPrimitives(ds)) {
-            if (!p.hasKey("shop")) {
+            if (!p.hasKey("shop") || (area != null && !inArea(p, area))) {
                 continue;
             }
             Profile profile = Profiles.find(p);
@@ -200,12 +206,20 @@ public final class Matcher {
      */
     public static List<Match> unreviewedOsm(DataSet ds, Collection<String> chains,
                                             Collection<OsmPrimitive> used) {
+        return unreviewedOsm(ds, chains, used, null);
+    }
+
+    public static List<Match> unreviewedOsm(DataSet ds, Collection<String> chains,
+                                            Collection<OsmPrimitive> used, Bounds area) {
         List<Match> out = new ArrayList<>();
         if (ds == null || chains == null) {
             return out;
         }
         for (OsmPrimitive p : chainPrimitives(ds)) {
             if (used != null && used.contains(p)) {
+                continue;
+            }
+            if (area != null && !inArea(p, area)) {
                 continue;
             }
             Profile profile = Profiles.find(p);
@@ -340,6 +354,12 @@ public final class Matcher {
             warnings.add("Далеко от координат сети: " + Math.round(d) + " м — проверьте, тот ли это магазин.");
         }
         return bad;
+    }
+
+    /** Объект внутри проверенной области (по центру). */
+    private static boolean inArea(OsmPrimitive p, Bounds area) {
+        LatLon c = center(p);
+        return c != null && area.contains(c);
     }
 
     private static LatLon center(OsmPrimitive p) {

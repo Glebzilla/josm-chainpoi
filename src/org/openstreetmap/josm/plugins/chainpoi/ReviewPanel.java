@@ -86,6 +86,8 @@ public class ReviewPanel extends ToggleDialog {
     private final Map<String, JToggleButton> chainBoxes = new LinkedHashMap<>();
 
     private List<Store> stores = Collections.emptyList();
+    /** Область последней проверки: строки «в OSM» и «закрылся» только по ней. */
+    private transient Bounds checkedBounds;
     /** Сети, данные которых уже применялись: попадут в источник changeset. */
     private final Set<String> usedSources = new LinkedHashSet<>();
     /** Временная подсветка объекта после «Показать на карте». */
@@ -255,6 +257,7 @@ public class ReviewPanel extends ToggleDialog {
                 }
                 SwingUtilities.invokeLater(() -> {
                     stores = fetched;
+                    checkedBounds = query;
                     rebuild();
                     status.setText(foundText(fetched));
                     checkButton.setEnabled(true);
@@ -294,6 +297,8 @@ public class ReviewPanel extends ToggleDialog {
                 return;
             }
             stores = inView;
+            checkedBounds = MainApplication.getMap() == null ? null
+                    : MainApplication.getMap().mapView.getRealBounds();
             rebuild();
             status.setText("Загружено " + inView.size() + " из " + file.stores.size()
                     + " точек: " + chooser.getSelectedFile().getName());
@@ -426,14 +431,16 @@ public class ReviewPanel extends ToggleDialog {
                 used.add(m.primitive);
             }
         }
-        for (Match orphan : Matcher.orphans(active, ds)) {
-            rows.add(new ReviewTableModel.Row(null, orphan));
-            if (orphan.primitive != null) {
-                used.add(orphan.primitive);
+        if (checkedBounds != null) {
+            for (Match orphan : Matcher.orphans(active, ds, checkedBounds)) {
+                rows.add(new ReviewTableModel.Row(null, orphan));
+                if (orphan.primitive != null) {
+                    used.add(orphan.primitive);
+                }
             }
-        }
-        for (Match onlyOsm : Matcher.unreviewedOsm(ds, enabledChains, used)) {
-            rows.add(new ReviewTableModel.Row(null, onlyOsm));
+            for (Match onlyOsm : Matcher.unreviewedOsm(ds, enabledChains, used, checkedBounds)) {
+                rows.add(new ReviewTableModel.Row(null, onlyOsm));
+            }
         }
         if (sortEnabled) {
             rows.sort(Comparator

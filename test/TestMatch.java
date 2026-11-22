@@ -41,6 +41,9 @@ public class TestMatch {
         System.out.println("unreviewed pyat: " + unchecked.size()
                 + (unchecked.isEmpty() ? "" : " " + unchecked.get(0).status
                 + " / " + unchecked.get(0).text()));
+        List<Match> outside = Matcher.unreviewedOsm(pyat, List.of("pyaterochka"),
+                java.util.Set.of(), new Bounds(10, 10, 11, 11));
+        System.out.println("unreviewed pyat outside area: " + outside.size());
 
         Map<String, String> wrongHours = new java.util.LinkedHashMap<>(store.tags);
         wrongHours.put("opening_hours", "Mo-Su 09:00-21:00");

@@ -32,6 +32,7 @@ and **Pyaterochka** (source: the chain's job vacancy database).
    - `created` — the point was created in this layer and not uploaded yet;
    - `not checked` — a chain object exists in OSM, but the source is incomplete
      (Pyaterochka vacancies): nothing to compare, view/panoramas only;
+     only objects inside the checked area are listed;
    - `not in chain data` — OSM has a store the chain doesn't have here
      (possibly closed);
    - `other format` — a nearby `М.Кос` (beauty format), not M.Kosmetik;
