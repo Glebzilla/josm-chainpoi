@@ -8,7 +8,8 @@ differ, and (per checkbox) creates objects in the current layer.
 Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
 **M.Kosmetik** (`DG`), **Pyaterochka** (source: the chain's job vacancy database),
 **Krasnoe&Beloe** (the chain's address catalogue), **Wildberries**
-(one ~75 MB pickup-point file) and **Rigla** (official GraphQL pharmacy list).
+(a ~75 MB pickup-point file downloaded automatically) and **Rigla**
+(official GraphQL pharmacy list).
 
 ![Chain stores panel in JOSM](docs/screenshot.png)
 
@@ -27,9 +28,10 @@ Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
    For **Krasnoe&Beloe** the plugin asks permission on the first check: about
    75 requests to the chain's catalogue, 6–7 MB, cached for 7 days. If you
    decline, the chain is skipped for this check.
-   For **Wildberries** it is one ~75 MB file (~72k pickup points); permission
-   is asked on the first check, cached for 7 days. Parcel lockers are skipped
-   for now: in OSM they are `amenity=parcel_locker`, not pickup points.
+   For **Wildberries** the plugin downloads one ~75 MB file (~72k pickup points)
+   automatically; permission is asked on the first check, cached for 7 days.
+   Parcel lockers are skipped for now: in OSM they are `amenity=parcel_locker`,
+   not pickup points.
    **Rigla** is fetched with one GraphQL request (~1k pharmacies), cached for 7 days.
    All pharmacy chains share one **Аптеки** toggle (the “+” icon).
    For Ozon (and other chains without an open API) there is an **Import…**
@@ -319,8 +321,8 @@ Close JOSM, delete `<JOSM directory>/plugins/chainpoi.jar` and the
 
 ## Roadmap
 
-- Ozon/Wildberries — postponed: their maps return points as tiles/widgets and
-  need separate work. VTB ATMs — after that.
+- Ozon — postponed: its map returns points as tiles/widgets and needs separate work.
+  Wildberries is already supported via the static JSON. VTB ATMs — after that.
 - Highlighting proposed points on the map in a separate temporary layer.
 - Configurable distance threshold and checked tag set.
 - Filling `addr:*` from the building outline behind a separate checkbox.
