@@ -118,6 +118,10 @@ final class StoreMarker implements MapViewPaintable {
                 return new Color(0x1B, 0x5E, 0x9A);
             case "wildberries":
                 return new Color(0x8B, 0x1B, 0x6A);
+            case "yarche":
+                return new Color(0x00, 0x84, 0x3D);
+            case "maria-ra":
+                return new Color(0xF5, 0x82, 0x20);
             default:
                 return new Color(0x1B, 0x5E, 0x9A);
         }

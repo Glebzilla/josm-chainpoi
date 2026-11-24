@@ -18,6 +18,8 @@ public final class Profiles {
     private static final String KOSMETIK = "М.Косметик";
     private static final String KB = "К&Б";
     private static final String RIGLA = "Ригла";
+    private static final String YARCHE = "Ярче!";
+    private static final String MARIA_RA = "Мария-Ра";
 
     private static final List<String> MAGNIT_KEYS = List.of(
             "shop", "name", "brand", "brand:wikidata", "operator", "opening_hours");
@@ -54,14 +56,6 @@ public final class Profiles {
 
     private static final List<Profile> ALL = List.of(
             MAGNIT_PROFILE,
-            KOSMETIK_PROFILE,
-            new Profile("rigla", RIGLA, RIGLA_KEYS,
-                    Profiles::isRigla,
-                    store -> new LinkedHashMap<>(store.tags), null)
-                    .inGroup("Аптеки"),
-            new Profile("krasnoe-beloe", KB, KB_KEYS,
-                    Profiles::isKrasnoeBeloe,
-                    store -> new LinkedHashMap<>(store.tags), null),
             new Profile("pyaterochka", "Пятёрочка", SHOP_KEYS,
                     p -> shopNamed(p, "пятерочка"),
                     store -> new LinkedHashMap<>(store.tags), null)
@@ -69,14 +63,28 @@ public final class Profiles {
                     .withRadius(250)
                     .withNote("Источник — вакансии: часов работы нет, координаты могут быть "
                             + "неточными. Проверьте магазин по панорамам."),
+            new Profile("yarche", YARCHE, SHOP_KEYS,
+                    p -> shopNamed(p, "ярче"),
+                    store -> new LinkedHashMap<>(store.tags), null),
+            new Profile("maria-ra", MARIA_RA, SHOP_KEYS,
+                    p -> shopNamed(p, "мария-ра", "мария ра"),
+                    store -> new LinkedHashMap<>(store.tags), null),
+            new Profile("krasnoe-beloe", KB, KB_KEYS,
+                    Profiles::isKrasnoeBeloe,
+                    store -> new LinkedHashMap<>(store.tags), null),
+            KOSMETIK_PROFILE,
+            new Profile("rigla", RIGLA, RIGLA_KEYS,
+                    Profiles::isRigla,
+                    store -> new LinkedHashMap<>(store.tags), null)
+                    .inGroup("Аптеки"),
+            new Profile("wildberries", "Wildberries", SHOP_KEYS,
+                    p -> shopNamed(p, "wildberries", "вайлдберриз"),
+                    store -> new LinkedHashMap<>(store.tags), null),
             new Profile("ozon", "Ozon", SHOP_KEYS,
                     p -> "outpost".equals(p.get("shop")) && named(p, "ozon", "озон"),
                     store -> new LinkedHashMap<>(store.tags), null),
             new Profile("ozon-box", "Ozon Box", LOCKER_KEYS,
                     p -> "parcel_locker".equals(p.get("amenity")) && named(p, "ozon", "озон"),
-                    store -> new LinkedHashMap<>(store.tags), null),
-            new Profile("wildberries", "Wildberries", SHOP_KEYS,
-                    p -> shopNamed(p, "wildberries", "вайлдберриз"),
                     store -> new LinkedHashMap<>(store.tags), null));
 
     private Profiles() {
@@ -93,6 +101,32 @@ public final class Profiles {
             }
         }
         return MAGNIT_PROFILE;
+    }
+
+    /** Порядок типов в таблице: продукты, алкоголь, косметика, аптеки, ПВЗ. */
+    static int kindRank(String id) {
+        if (id == null) {
+            return 9;
+        }
+        switch (id) {
+            case "magnit":
+            case "pyaterochka":
+            case "yarche":
+            case "maria-ra":
+                return 0;
+            case "krasnoe-beloe":
+                return 1;
+            case "magnit-kosmetik":
+                return 2;
+            case "rigla":
+                return 3;
+            case "wildberries":
+            case "ozon":
+            case "ozon-box":
+                return 4;
+            default:
+                return 9;
+        }
     }
 
     /** Профиль, к которому относится объект OSM, или {@code null}. */

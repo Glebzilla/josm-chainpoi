@@ -8,8 +8,8 @@ differ, and (per checkbox) creates objects in the current layer.
 Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
 **M.Kosmetik** (`DG`), **Pyaterochka** (source: the chain's job vacancy database),
 **Krasnoe&Beloe** (the chain's address catalogue), **Wildberries**
-(a ~75 MB pickup-point file downloaded automatically) and **Rigla**
-(official GraphQL pharmacy list).
+(a ~75 MB pickup-point file downloaded automatically), **Rigla**
+(official GraphQL pharmacy list), **Yarche!** and **Maria-Ra**.
 
 ![Chain stores panel in JOSM](docs/screenshot.png)
 
@@ -33,9 +33,14 @@ Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
    Parcel lockers are skipped for now: in OSM they are `amenity=parcel_locker`,
    not pickup points.
    **Rigla** is fetched with one GraphQL request (~1k pharmacies), cached for 7 days.
+   **Yarche!** is fetched from 31 regional pages with addresses and coordinates,
+   cached for 7 days. **Maria-Ra** comes from one “Store map” page containing
+   JSON points and hours, cached for 7 days. The **Кэш** button clears all saved
+   lists; the next check downloads them again.
    All pharmacy chains share one **Аптеки** toggle (the “+” icon).
    For Ozon (and other chains without an open API) there is an **Import…**
    button — see [bookmarklets/README.md](bookmarklets/README.md).
+   The plugin-icon button in the top row shows chain badges on the map.
 4. The table lists the results. Statuses:
    - `not in OSM` — no object, a point can be created;
    - `differences: N` — the object exists, but tag values differ;
@@ -73,9 +78,10 @@ Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
    in the "OSM object" column opens the object on osm.org.
    Reviewed and skipped rows move to the bottom of the list.
 7. **Accept checked** does the same for all checked rows, with a confirmation
-   and a list of what will change. The **сорт.** checkbox above the table turns
-   automatic sorting on: reviewed and skipped rows move to the bottom. Clear it
-   if you do not want rows to jump after applying.
+   and a list of what will change. The sort button above the table shows the
+   current mode, e.g. **“По статусу ↑ ▾”**. The menu offers status, chain, type
+   and no sorting; ascending/descending is selected separately. In “Без
+   сортировки” mode rows stay in place and do not jump after applying.
 8. Uploading to OSM is up to you and your account.
 
 Overpass is not used: matching is done against what is already loaded in the
@@ -177,6 +183,13 @@ a different tagging scheme for them.
 For **Rigla** — `amenity=pharmacy`, `name`/`name:ru`/`brand` = «Ригла»,
 `brand:wikidata=Q4394431`, `healthcare=pharmacy`. From the group feed only
 points with "Ригла" in the name are used; partner pharmacies are left alone.
+
+For **Yarche!** — `shop=supermarket`, `name`/`brand` = «Ярче!»,
+`brand:wikidata=Q102254456`. Coordinates come from `data-coords` on the site.
+
+For **Maria-Ra** — `shop=supermarket`, `name`/`brand` = «Мария-Ра»,
+`brand:wikidata=Q4281631`. If the map provides opening hours, they are added
+as `opening_hours`.
 
 ## Store formats
 

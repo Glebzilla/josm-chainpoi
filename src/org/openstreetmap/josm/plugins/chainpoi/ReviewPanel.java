@@ -19,10 +19,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
@@ -64,9 +67,11 @@ public class ReviewPanel extends ToggleDialog {
     private final KrasnoeBeloeProvider kbProvider = new KrasnoeBeloeProvider();
     private final WildberriesProvider wbProvider = new WildberriesProvider();
     private final RiglaProvider riglaProvider = new RiglaProvider();
+    private final YarcheProvider yarcheProvider = new YarcheProvider();
+    private final MariaRaProvider mariaRaProvider = new MariaRaProvider();
     private final List<ChainProvider> providers = List.of(
             new MagnitProvider(), new PyaterochkaProvider(), kbProvider, wbProvider,
-            riglaProvider);
+            riglaProvider, yarcheProvider, mariaRaProvider);
 
     private final ReviewTableModel model = new ReviewTableModel();
     private final JTable table = new JTable(model);
@@ -75,13 +80,19 @@ public class ReviewPanel extends ToggleDialog {
     private final JButton checkButton = new JButton("Проверить");
     private final JButton fileButton = new JButton("Импорт…");
     private final JButton applyButton = new JButton("Принять отмеченные");
+    private final JButton cacheButton = new JButton("Кэш");
+    private final JToggleButton badgeButton = new JToggleButton();
+    private StoreBadgeLayer badgeLayer;
+    private MapView badgeMapView;
+    private boolean badgesEnabled = org.openstreetmap.josm.spi.preferences.Config.getPref()
+            .getBoolean("chainpoi.badges", false);
     private final ReviewDetailPanel detail;
     private final CheckAction checkAction;
 
     /** Сети, для которых есть прямой источник данных. */
     private static final Set<String> DIRECT_CHAINS = Set.of(
             "magnit", "magnit-kosmetik", "pyaterochka",
-            "krasnoe-beloe", "wildberries", "rigla");
+            "krasnoe-beloe", "wildberries", "rigla", "yarche", "maria-ra");
 
     /** Сети, загруженные из файла (для них переключателя нет). */
     private final Set<String> fileChains = new LinkedHashSet<>();
@@ -102,11 +113,19 @@ public class ReviewPanel extends ToggleDialog {
     private transient boolean flashedWasOn;
     private transient javax.swing.Timer flashTimer;
     private transient StoreMarker storeMarker;
-    /** Автосортировка строк по статусу и разобранности. */
-    private boolean sortEnabled = org.openstreetmap.josm.spi.preferences.Config.getPref()
-            .getBoolean("chainpoi.sort", true);
-    private final javax.swing.JCheckBox sortBox =
-            new javax.swing.JCheckBox("сорт.", sortEnabled);
+    /** Режим сортировки таблицы: status, network, type, none. */
+    private String sortMode = loadSortMode();
+    private boolean sortAscending = org.openstreetmap.josm.spi.preferences.Config.getPref()
+            .getBoolean("chainpoi.sortAscending", true);
+    private static final String SORT_STATUS = "status";
+    private static final String SORT_NETWORK = "network";
+    private static final String SORT_TYPE = "type";
+    private static final String SORT_NONE = "none";
+    private final JButton sortButton = new JButton();
+    private final JPopupMenu sortMenu = new JPopupMenu();
+    private final Map<String, JRadioButtonMenuItem> sortModeItems = new LinkedHashMap<>();
+    private final JRadioButtonMenuItem sortAscItem = new JRadioButtonMenuItem("↑ По возрастанию");
+    private final JRadioButtonMenuItem sortDescItem = new JRadioButtonMenuItem("↓ По убыванию");
 
     public ReviewPanel() {
         super("Сетевые магазины", "chainpoi",
@@ -120,18 +139,22 @@ public class ReviewPanel extends ToggleDialog {
         JPanel topButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         topButtons.add(checkButton);
         topButtons.add(fileButton);
+        cacheButton.setToolTipText("Удалить сохранённые списки сетей; "
+                + "при следующей проверке данные скачаются заново");
+        cacheButton.setMargin(new java.awt.Insets(1, 4, 1, 4));
+        cacheButton.addActionListener(e -> clearCaches());
+        topButtons.add(cacheButton);
+        badgeButton.setIcon(chainIcon("chainpoi", 18));
+        badgeButton.setSelected(badgesEnabled);
+        badgeButton.setFocusable(false);
+        badgeButton.setMargin(new java.awt.Insets(1, 3, 1, 3));
+        badgeButton.setToolTipText("Показывать значки сетей на карте");
+        badgeButton.addActionListener(e -> toggleBadges());
+        topButtons.add(badgeButton);
         top.add(topButtons, BorderLayout.WEST);
         top.add(status, BorderLayout.CENTER);
-        sortBox.setFocusable(false);
-        sortBox.setToolTipText("Разобранные и пропущенные строки — вниз; "
-                + "снимите, чтобы строки оставались на месте");
-        sortBox.addActionListener(e -> {
-            sortEnabled = sortBox.isSelected();
-            org.openstreetmap.josm.spi.preferences.Config.getPref()
-                    .putBoolean("chainpoi.sort", sortEnabled);
-            resort();
-        });
-        top.add(sortBox, BorderLayout.EAST);
+        buildSortControl();
+        top.add(sortButton, BorderLayout.EAST);
 
         JPanel north = new JPanel(new BorderLayout(0, 2));
         north.add(top, BorderLayout.NORTH);
@@ -208,7 +231,7 @@ public class ReviewPanel extends ToggleDialog {
         checkButton.setToolTipText("Запросить магазины сетей для видимой области");
         fileButton.addActionListener(e -> loadFile());
         fileButton.setToolTipText("Загрузить точки из JSON, сохранённого в браузере "
-                + "(для Ozon, Wildberries и других сетей без открытого API)");
+                + "(для Ozon и других сетей без открытого API)");
         applyButton.addActionListener(e -> applySelected());
 
         createLayout(content, false, Collections.emptyList());
@@ -280,7 +303,33 @@ public class ReviewPanel extends ToggleDialog {
             wbProvider.setAllowDownload(false);
         }
         wbProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+
+        if (enabledChains.contains("yarche")) {
+            if (!yarcheProvider.hasFreshCache()) {
+                int answer = JOptionPane.showConfirmDialog(this,
+                        "Загрузить список «Ярче!»?\n\n"
+                        + "31 запрос по регионам, несколько МБ.\n"
+                        + "Кэш хранится 7 дней, без загрузки сеть не проверяется.",
+                        "Сетевые магазины", JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+                yarcheProvider.setAllowDownload(answer == JOptionPane.YES_OPTION);
+            } else {
+                yarcheProvider.setAllowDownload(true);
+            }
+        } else {
+            yarcheProvider.setAllowDownload(false);
+        }
+
+        if (enabledChains.contains("maria-ra")) {
+            // Один небольшой запрос: кэш ~200 КБ, разрешение не спрашиваем.
+            mariaRaProvider.setAllowDownload(true);
+        } else {
+            mariaRaProvider.setAllowDownload(false);
+        }
+
         riglaProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+        yarcheProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+        mariaRaProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
 
         checkButton.setEnabled(false);
         applyButton.setEnabled(false);
@@ -301,7 +350,8 @@ public class ReviewPanel extends ToggleDialog {
                     stores = fetched;
                     checkedBounds = query;
                     rebuild();
-                    status.setText(foundText(fetched));
+                    status.setText(foundShort(fetched));
+                    status.setToolTipText(foundText(fetched));
                     checkButton.setEnabled(true);
                     applyButton.setEnabled(true);
                 });
@@ -314,6 +364,81 @@ public class ReviewPanel extends ToggleDialog {
                 });
             }
         }, "chainpoi-fetch").start();
+    }
+
+    /** Включает/выключает значки сетей поверх карты. */
+    private void toggleBadges() {
+        badgesEnabled = badgeButton.isSelected();
+        org.openstreetmap.josm.spi.preferences.Config.getPref()
+                .putBoolean("chainpoi.badges", badgesEnabled);
+        badgeButton.setToolTipText(badgesEnabled
+                ? "Скрыть значки сетей на карте" : "Показывать значки сетей на карте");
+        if (!badgesEnabled) {
+            removeBadgeLayer();
+            status.setText("Значки сетей выключены");
+            return;
+        }
+        MapView mv = MainApplication.getMap() == null ? null : MainApplication.getMap().mapView;
+        if (mv == null) {
+            badgesEnabled = false;
+            badgeButton.setSelected(false);
+            status.setText("Нет карты для значков");
+            return;
+        }
+        if (badgeLayer == null || badgeMapView != mv) {
+            removeBadgeLayer();
+            badgeMapView = mv;
+            badgeLayer = new StoreBadgeLayer(mv, id -> chainIcon(iconFor(id), 22));
+            mv.addTemporaryLayer(badgeLayer);
+        }
+        updateBadgeLayer();
+        status.setText("Значки сетей включены");
+    }
+
+    private void removeBadgeLayer() {
+        if (badgeLayer != null && badgeMapView != null) {
+            badgeMapView.removeTemporaryLayer(badgeLayer);
+        }
+        badgeLayer = null;
+        badgeMapView = null;
+    }
+
+    private void updateBadgeLayer() {
+        if (!badgesEnabled) {
+            return;
+        }
+        MapView mv = MainApplication.getMap() == null ? null : MainApplication.getMap().mapView;
+        if (mv == null) {
+            return;
+        }
+        if (badgeLayer == null || badgeMapView != mv) {
+            removeBadgeLayer();
+            badgeMapView = mv;
+            badgeLayer = new StoreBadgeLayer(mv, id -> chainIcon(iconFor(id), 22));
+            mv.addTemporaryLayer(badgeLayer);
+        }
+        List<Store> visible = new ArrayList<>();
+        for (Store s : stores) {
+            if (enabledChains.contains(s.chainId)) {
+                visible.add(s);
+            }
+        }
+        badgeLayer.setStores(visible);
+    }
+
+    /** Удаляет кэши всех сетей; данные скачаются при следующей проверке. */
+    private void clearCaches() {
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Удалить сохранённые списки сетей?\n\n"
+                + "При следующей проверке данные скачаются заново, "
+                + "включая справочник Wildberries (~75 МБ) и регионы «Ярче!».",
+                "Сетевые магазины", JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (answer != JOptionPane.YES_OPTION) {
+            return;
+        }
+        int removed = Caches.clearAll();
+        status.setText(removed == 0 ? "Кэш уже пуст" : "Кэш очищен: " + removed + " файл(ов)");
     }
 
     /** Загружает выгрузку, сохранённую букмарклетом на сайте сети. */
@@ -385,25 +510,162 @@ public class ReviewPanel extends ToggleDialog {
                 return "WB";
             case "krasnoe-beloe":
                 return "К&Б";
+            case "yarche":
+                return "Ярче";
+            case "maria-ra":
+                return "М-Ра";
             default:
                 return fallback;
         }
     }
 
+    /** Компактное меню сортировки: режим + направление. */
+    private void buildSortControl() {
+        ButtonGroup modes = new ButtonGroup();
+        addSortMode(modes, SORT_STATUS, "По статусу");
+        addSortMode(modes, SORT_NETWORK, "По сети");
+        addSortMode(modes, SORT_TYPE, "По типу");
+        addSortMode(modes, SORT_NONE, "Без сортировки");
+
+        sortMenu.addSeparator();
+        ButtonGroup directions = new ButtonGroup();
+        directions.add(sortAscItem);
+        directions.add(sortDescItem);
+        sortAscItem.addActionListener(e -> setSortAscending(true));
+        sortDescItem.addActionListener(e -> setSortAscending(false));
+        sortMenu.add(sortAscItem);
+        sortMenu.add(sortDescItem);
+
+        sortButton.setFocusable(false);
+        sortButton.setMargin(new java.awt.Insets(0, 4, 0, 2));
+        sortButton.addActionListener(e -> {
+            updateSortMenu();
+            sortMenu.show(sortButton,
+                    sortButton.getWidth() - sortMenu.getPreferredSize().width,
+                    sortButton.getHeight());
+        });
+        updateSortButton();
+    }
+
+    private void addSortMode(ButtonGroup group, String mode, String label) {
+        JRadioButtonMenuItem item = new JRadioButtonMenuItem(label);
+        item.addActionListener(e -> setSortMode(mode));
+        group.add(item);
+        sortMenu.add(item);
+        sortModeItems.put(mode, item);
+    }
+
+    private void updateSortMenu() {
+        JRadioButtonMenuItem item = sortModeItems.get(sortMode);
+        if (item != null) {
+            item.setSelected(true);
+        }
+        boolean sorted = !SORT_NONE.equals(sortMode);
+        sortAscItem.setEnabled(sorted);
+        sortDescItem.setEnabled(sorted);
+        sortAscItem.setSelected(sorted && sortAscending);
+        sortDescItem.setSelected(sorted && !sortAscending);
+    }
+
+    private void setSortMode(String mode) {
+        if (!isSortMode(mode)) {
+            return;
+        }
+        sortMode = mode;
+        org.openstreetmap.josm.spi.preferences.Config.getPref()
+                .put("chainpoi.sortMode", mode);
+        // Старая настройка остаётся для совместимости.
+        org.openstreetmap.josm.spi.preferences.Config.getPref()
+                .putBoolean("chainpoi.sort", !SORT_NONE.equals(mode));
+        updateSortButton();
+        resort();
+    }
+
+    private void setSortAscending(boolean ascending) {
+        sortAscending = ascending;
+        org.openstreetmap.josm.spi.preferences.Config.getPref()
+                .putBoolean("chainpoi.sortAscending", ascending);
+        updateSortButton();
+        resort();
+    }
+
+    private void updateSortButton() {
+        String label = sortModeLabel(sortMode);
+        if (!SORT_NONE.equals(sortMode)) {
+            label += sortAscending ? " ↑" : " ↓";
+        }
+        sortButton.setText(label + " ▾");
+        sortButton.setToolTipText("Сортировка: " + sortModeLabel(sortMode)
+                + (SORT_NONE.equals(sortMode) ? "" : directionHint()));
+    }
+
+    private String directionHint() {
+        if (sortAscending) {
+            switch (sortMode) {
+                case SORT_STATUS:
+                    return ", сначала проблемные";
+                case SORT_NETWORK:
+                    return ", по алфавиту";
+                case SORT_TYPE:
+                    return ", продукты → ПВЗ";
+                default:
+                    return "";
+            }
+        }
+        switch (sortMode) {
+            case SORT_STATUS:
+                return ", сначала готовые";
+            case SORT_NETWORK:
+                return ", в обратном алфавитном порядке";
+            case SORT_TYPE:
+                return ", ПВЗ → продукты";
+            default:
+                return "";
+        }
+    }
+
+    private static String sortModeLabel(String mode) {
+        if (SORT_NETWORK.equals(mode)) {
+            return "По сети";
+        }
+        if (SORT_TYPE.equals(mode)) {
+            return "По типу";
+        }
+        if (SORT_NONE.equals(mode)) {
+            return "Без сортировки";
+        }
+        return "По статусу";
+    }
+
+    private static boolean isSortMode(String mode) {
+        return SORT_STATUS.equals(mode) || SORT_NETWORK.equals(mode)
+                || SORT_TYPE.equals(mode) || SORT_NONE.equals(mode);
+    }
+
+    private static String loadSortMode() {
+        String mode = org.openstreetmap.josm.spi.preferences.Config.getPref()
+                .get("chainpoi.sortMode", "");
+        if (isSortMode(mode)) {
+            return mode;
+        }
+        return org.openstreetmap.josm.spi.preferences.Config.getPref()
+                .getBoolean("chainpoi.sort", true) ? SORT_STATUS : SORT_NONE;
+    }
+
     /** Ряд переключателей под кнопками: какие сети проверять. */
     private JPanel buildChainRow() {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        List<java.awt.Component> items = new ArrayList<>();
         java.util.Set<String> groupsDone = new java.util.HashSet<>();
         for (Profile profile : Profiles.all()) {
             if (!DIRECT_CHAINS.contains(profile.id)) {
-                javax.swing.Icon icon = org.openstreetmap.josm.tools.ImageProvider.get(iconFor(profile.id));
+                javax.swing.Icon icon = chainIcon(iconFor(profile.id), 18);
                 javax.swing.JLabel hintLabel = new javax.swing.JLabel(profile.name, greyIcon(icon),
                         javax.swing.SwingConstants.LEADING);
                 hintLabel.setForeground(new java.awt.Color(0x99, 0x99, 0x99));
                 hintLabel.setIconTextGap(4);
                 hintLabel.setToolTipText("В разработке: источника данных пока нет — "
                         + "только импорт из файла");
-                row.add(hintLabel);
+                items.add(hintLabel);
                 continue;
             }
 
@@ -435,7 +697,7 @@ public class ReviewPanel extends ToggleDialog {
                         && !"wildberries".equals(profile.id);
             }
 
-            javax.swing.Icon icon = org.openstreetmap.josm.tools.ImageProvider.get(iconName);
+            javax.swing.Icon icon = chainIcon(iconName, 18);
             JToggleButton box = new JToggleButton(label, icon);
             box.putClientProperty("icon-on", icon);
             box.putClientProperty("icon-off", greyIcon(icon));
@@ -448,7 +710,9 @@ public class ReviewPanel extends ToggleDialog {
                       + ("krasnoe-beloe".equals(profile.id)
                          ? " — при первой проверке данные качаются по регионам (~6–7 МБ)"
                          : "wildberries".equals(profile.id)
-                         ? " — при первой проверке качается общий справочник (~75 МБ)" : "");
+                         ? " — при первой проверке качается общий справочник (~75 МБ)"
+                         : "yarche".equals(profile.id)
+                         ? " — при первой проверке 31 запрос по регионам" : "");
             box.setToolTipText(tip);
             box.addActionListener(e -> {
                 styleChain(box);
@@ -461,9 +725,19 @@ public class ReviewPanel extends ToggleDialog {
             if (onByDefault) {
                 enabledChains.addAll(ids);
             }
-            row.add(box);
+            items.add(box);
         }
-        return row;
+
+        JPanel result = new JPanel();
+        result.setLayout(new javax.swing.BoxLayout(result, javax.swing.BoxLayout.Y_AXIS));
+        for (int i = 0; i < items.size(); i += 5) {
+            JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+            for (int j = i; j < Math.min(i + 5, items.size()); j++) {
+                row.add(items.get(j));
+            }
+            result.add(row);
+        }
+        return result;
     }
 
     /** Выключенная сеть — серая иконка и серый текст. */
@@ -514,9 +788,27 @@ public class ReviewPanel extends ToggleDialog {
                 return "chain-wildberries";
             case "rigla":
                 return "chain-rigla";
+            case "yarche":
+                return "chain-yarche";
+            case "maria-ra":
+                return "chain-maria-ra";
             default:
                 return "chainpoi";
         }
+    }
+
+    /** Значок сети одного размера: исходники бывают 16 и 20 px. */
+    private static javax.swing.ImageIcon chainIcon(String iconName, int size) {
+        javax.swing.Icon icon = org.openstreetmap.josm.tools.ImageProvider.get(iconName);
+        if (!(icon instanceof javax.swing.ImageIcon)) {
+            return new javax.swing.ImageIcon();
+        }
+        java.awt.Image image = ((javax.swing.ImageIcon) icon).getImage();
+        if (image.getWidth(null) == size && image.getHeight(null) == size) {
+            return (javax.swing.ImageIcon) icon;
+        }
+        return new javax.swing.ImageIcon(
+                image.getScaledInstance(size, size, java.awt.Image.SCALE_SMOOTH));
     }
 
     /** Пересобирает таблицу по уже загруженным данным сети, без обращения к сайту. */
@@ -528,6 +820,7 @@ public class ReviewPanel extends ToggleDialog {
                 active.add(s);
             }
         }
+        updateBadgeLayer();
         List<ReviewTableModel.Row> rows = new ArrayList<>();
         Set<OsmPrimitive> used = new java.util.HashSet<>();
         for (Store s : active) {
@@ -548,11 +841,7 @@ public class ReviewPanel extends ToggleDialog {
                 rows.add(new ReviewTableModel.Row(null, onlyOsm));
             }
         }
-        if (sortEnabled) {
-            rows.sort(Comparator
-                    .comparingInt((ReviewTableModel.Row r) -> r.reviewed ? 1 : 0)
-                    .thenComparingInt(r -> rank(r.match)));
-        }
+        sortRows(rows);
         model.setRows(rows);
         updateStatus();
         if (!rows.isEmpty() && table.getSelectedRow() < 0) {
@@ -579,6 +868,14 @@ public class ReviewPanel extends ToggleDialog {
             }
         }
         return sb.toString();
+    }
+
+    private static String foundShort(List<Store> found) {
+        Set<String> chains = new java.util.HashSet<>();
+        for (Store s : found) {
+            chains.add(s.chainName);
+        }
+        return "Найдено " + found.size() + (chains.isEmpty() ? "" : " · " + chains.size() + " сетей");
     }
 
     private static int rank(Match m) {
@@ -647,11 +944,14 @@ public class ReviewPanel extends ToggleDialog {
                     break;
             }
         }
-        status.setText("Всего " + model.getRows().size()
+        String full = "Всего " + model.getRows().size()
                 + ": нет в OSM " + missing + ", расхождения " + diff
                 + ", ошибки " + bad + ", ок " + ok + ", нет в сети " + orphan
                 + ", другое " + other + ", создано " + created
-                + ", не проверено " + noData);
+                + ", не проверено " + noData;
+        status.setText("Всего " + model.getRows().size() + " · нет " + missing
+                + " · расх. " + diff + " · ок " + ok);
+        status.setToolTipText(full);
     }
 
     // ------------------------------------------------------------------
@@ -747,12 +1047,58 @@ public class ReviewPanel extends ToggleDialog {
 
     /** Разобранные и пропущенные строки — вниз, остальные по важности. */
     private void resort() {
-        if (sortEnabled) {
-            model.getRows().sort(Comparator
-                    .comparingInt((ReviewTableModel.Row r) -> r.reviewed ? 1 : 0)
-                    .thenComparingInt(r -> rank(r.match)));
-        }
+        sortRows(model.getRows());
         model.fireTableDataChanged();
+    }
+
+    /** Сортирует строки по выбранному режиму и направлению. */
+    private void sortRows(List<ReviewTableModel.Row> rows) {
+        if (SORT_NONE.equals(sortMode)) {
+            return;
+        }
+        Comparator<ReviewTableModel.Row> comparator;
+        switch (sortMode) {
+            case SORT_NETWORK:
+                comparator = Comparator
+                        .comparing(ReviewPanel::chainNameFor, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparingInt(r -> r.reviewed ? 1 : 0)
+                        .thenComparingInt(r -> rank(r.match));
+                break;
+            case SORT_TYPE:
+                comparator = Comparator
+                        .comparingInt(ReviewPanel::kindRankFor)
+                        .thenComparing(ReviewPanel::chainNameFor, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparingInt(r -> r.reviewed ? 1 : 0)
+                        .thenComparingInt(r -> rank(r.match));
+                break;
+            default:
+                comparator = Comparator
+                        .comparingInt((ReviewTableModel.Row r) -> r.reviewed ? 1 : 0)
+                        .thenComparingInt(r -> rank(r.match));
+                break;
+        }
+        if (!sortAscending) {
+            comparator = comparator.reversed();
+        }
+        rows.sort(comparator);
+    }
+
+    private static String chainNameFor(ReviewTableModel.Row r) {
+        if (r.store != null) {
+            return r.store.chainName == null ? "" : r.store.chainName;
+        }
+        Profile p = r.match == null || r.match.primitive == null
+                ? null : Profiles.find(r.match.primitive);
+        return p == null ? "" : p.name;
+    }
+
+    private static int kindRankFor(ReviewTableModel.Row r) {
+        if (r.store != null) {
+            return Profiles.kindRank(r.store.chainId);
+        }
+        Profile p = r.match == null || r.match.primitive == null
+                ? null : Profiles.find(r.match.primitive);
+        return p == null ? 9 : Profiles.kindRank(p.id);
     }
 
     private String summary(Applier.Result r) {
@@ -1161,8 +1507,7 @@ public class ReviewPanel extends ToggleDialog {
             storeMarker.cancel();
             storeMarker = null;
         }
-        javax.swing.ImageIcon icon =
-                org.openstreetmap.josm.tools.ImageProvider.get(iconFor(store.chainId));
+        javax.swing.ImageIcon icon = chainIcon(iconFor(store.chainId), 22);
         StoreMarker marker = new StoreMarker(mv, new LatLon(store.lat, store.lon),
                 icon, StoreMarker.colorFor(store.chainId));
         marker.setOnFinish(() -> {
