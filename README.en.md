@@ -72,10 +72,13 @@ Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
    **Panoramas** — an icon in every table row and a button in the details:
    opens Yandex Maps with the panorama layer.
    The same actions are in the row context menu (right-click): **Accept**,
-   **Skip**, **Show on map**, **Select on map** and **Panoramas**. The store
-   code in the card header is a link: clicking it opens a menu with Yandex Maps
-   and 2GIS (both maps open at the store point, ~80 m scale). The `node/…` link
-   in the "OSM object" column opens the object on osm.org.
+   **Skip**, **Show on map**, **Select on map** and **Panoramas**. A short
+   right-click opens the normal menu, a long press opens the circular action
+   menu.
+   ![Circular action menu](docs/pie-menu.png)
+   The store code in the card header is a link: clicking it opens a menu with
+   Yandex Maps and 2GIS (both maps open at the store point, ~80 m scale). The
+   `node/…` link in the "OSM object" column opens the object on osm.org.
    Reviewed and skipped rows move to the bottom of the list.
 7. **Accept checked** does the same for all checked rows, with a confirmation
    and a list of what will change. The sort button above the table shows the
@@ -339,6 +342,12 @@ Close JOSM, delete `<JOSM directory>/plugins/chainpoi.jar` and the
 - Highlighting proposed points on the map in a separate temporary layer.
 - Configurable distance threshold and checked tag set.
 - Filling `addr:*` from the building outline behind a separate checkbox.
+
+## Development
+
+Parts of the code and documentation were prepared with AI assistance, then
+reviewed, built and tested by the author. The plugin never uploads data to OSM
+automatically.
 
 ## License
 
