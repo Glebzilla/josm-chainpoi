@@ -27,7 +27,9 @@ import org.openstreetmap.josm.data.coor.LatLon;
 public final class YarcheProvider implements ChainProvider {
 
     private static final String BASE = "https://xn--e1avv4a.xn--p1ai/shops/?region=";
-    private static final String CACHE_NAME = "chainpoi-yarche.json";
+    private static final String CACHE_PREFIX = "chainpoi-yarche";
+    private static final String CACHE_NAME = CACHE_PREFIX + ".json";
+    private static final String REGION_INDEX = "chainpoi-yarche-regions.json";
     private static final long TTL_MS = 7L * 24 * 60 * 60 * 1000;
     private static final String CHAIN_ID = "yarche";
     private static final String CHAIN = "Ярче!";
@@ -70,38 +72,53 @@ public final class YarcheProvider implements ChainProvider {
         this.allowDownload = allow;
     }
 
-    public boolean hasFreshCache() {
-        return StoreCache.isFresh(CACHE_NAME, TTL_MS);
+    public boolean hasFreshCache(Bounds bbox) {
+        if (StoreCache.isFresh(CACHE_NAME, TTL_MS)) {
+            return true;
+        }
+        RegionIndex index = new RegionIndex(REGION_INDEX);
+        if (index.isEmpty()) {
+            return false;
+        }
+        for (String id : index.intersecting(regionIds(), padded(bbox))) {
+            if (!StoreCache.isFresh(regionFile(id), TTL_MS)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
     public List<Store> fetch(Bounds bbox) throws Exception {
-        List<Store> all = StoreCache.read(CACHE_NAME, CHAIN_ID, CHAIN, "supermarket");
-        if (all == null) {
-            if (!allowDownload) {
-                return List.of();
-            }
-            all = downloadAll();
-            StoreCache.write(CACHE_NAME, all);
-        } else if (allowDownload && !hasFreshCache()) {
-            all = downloadAll();
-            StoreCache.write(CACHE_NAME, all);
+        if (StoreCache.isFresh(CACHE_NAME, TTL_MS)) {
+            return readLegacy(bbox);
         }
-        List<Store> out = new ArrayList<>();
-        for (Store s : all) {
-            if (bbox.contains(new LatLon(s.lat, s.lon))) {
-                out.add(s);
+        RegionIndex index = new RegionIndex(REGION_INDEX);
+        List<String> ids = regionIds();
+        Bounds area = padded(bbox);
+        List<String> near = index.isEmpty()
+                ? new ArrayList<>(ids)
+                : index.intersecting(ids, area);
+        List<String> needed = new ArrayList<>();
+        for (String id : near) {
+            if (!StoreCache.isFresh(regionFile(id), TTL_MS)) {
+                needed.add(id);
             }
         }
-        return out;
+        if (!needed.isEmpty() && allowDownload) {
+            downloadRegions(needed, index, area);
+            near = index.intersecting(ids, area);
+        }
+        return readRegions(near, bbox);
     }
 
-    private List<Store> downloadAll() throws Exception {
-        List<Store> out = new ArrayList<>();
-        for (int i = 0; i < REGIONS.length; i++) {
-            int region = REGIONS[i];
-            progress.accept("Ярче!: регион " + (i + 1) + " из " + REGIONS.length);
-            HttpRequest req = HttpRequest.newBuilder(URI.create(BASE + region))
+    private void downloadRegions(List<String> ids, RegionIndex index, Bounds area) throws Exception {
+        int i = 0;
+        int total = 0;
+        for (String id : ids) {
+            i++;
+            progress.accept("Ярче!: регион " + i + " из " + ids.size());
+            HttpRequest req = HttpRequest.newBuilder(URI.create(BASE + id))
                     .timeout(Duration.ofSeconds(30))
                     .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) JOSM-chainpoi/0.1")
                     .GET()
@@ -110,10 +127,62 @@ public final class YarcheProvider implements ChainProvider {
             if (resp.statusCode() != 200) {
                 continue;
             }
-            out.addAll(parseRegion(resp.body()));
+            List<Store> region = parseRegion(resp.body());
+            index.update(id, region, System.currentTimeMillis());
+            if (index.intersects(id, area)) {
+                StoreCache.write(regionFile(id), region);
+            }
+            total += region.size();
         }
-        progress.accept("Ярче!: найдено " + out.size() + " магазинов");
-        return out;
+        index.save();
+        progress.accept("Ярче!: найдено " + total + " магазинов");
+    }
+
+    private List<Store> readLegacy(Bounds bbox) {
+        List<Store> all = StoreCache.read(CACHE_NAME, CHAIN_ID, CHAIN, "supermarket");
+        if (all == null) {
+            return List.of();
+        }
+        Map<String, Store> byCode = new LinkedHashMap<>();
+        for (Store s : all) {
+            if (bbox.contains(new LatLon(s.lat, s.lon))) {
+                byCode.putIfAbsent(s.code, s);
+            }
+        }
+        return new ArrayList<>(byCode.values());
+    }
+
+    private List<Store> readRegions(List<String> ids, Bounds bbox) {
+        Map<String, Store> byCode = new LinkedHashMap<>();
+        for (String id : ids) {
+            List<Store> region = StoreCache.read(regionFile(id), CHAIN_ID, CHAIN, "supermarket");
+            if (region == null) {
+                continue;
+            }
+            for (Store s : region) {
+                if (bbox.contains(new LatLon(s.lat, s.lon))) {
+                    byCode.putIfAbsent(s.code, s);
+                }
+            }
+        }
+        return new ArrayList<>(byCode.values());
+    }
+
+    private static List<String> regionIds() {
+        List<String> ids = new ArrayList<>();
+        for (int id : REGIONS) {
+            ids.add(String.valueOf(id));
+        }
+        return ids;
+    }
+
+    private static String regionFile(String id) {
+        return CACHE_PREFIX + "-r" + id + ".json";
+    }
+
+    private static Bounds padded(Bounds b) {
+        return new Bounds(b.getMinLat() - 0.1, b.getMinLon() - 0.1,
+                b.getMaxLat() + 0.1, b.getMaxLon() + 0.1);
     }
 
     private List<Store> parseRegion(String html) {

@@ -104,4 +104,28 @@ final class StoreCache {
             return false;
         }
     }
+
+    /** Удаляет все файлы плагина: старые общие и квадратные кэши. */
+    static int clearAll() {
+        Path dir = file("chainpoi-x.json").getParent();
+        if (dir == null) {
+            return 0;
+        }
+        int removed = 0;
+        try (java.nio.file.DirectoryStream<Path> files =
+                     Files.newDirectoryStream(dir, "chainpoi-*.json")) {
+            for (Path f : files) {
+                try {
+                    if (Files.deleteIfExists(f)) {
+                        removed++;
+                    }
+                } catch (Exception ignored) {
+                    // занятый файл пропускаем
+                }
+            }
+        } catch (Exception ignored) {
+            // каталога нет
+        }
+        return removed;
+    }
 }

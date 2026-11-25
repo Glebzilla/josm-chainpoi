@@ -5,9 +5,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -27,7 +24,6 @@ import jakarta.json.JsonValue;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
-import org.openstreetmap.josm.spi.preferences.Config;
 
 /**
  * «Красное&Белое»: адресный каталог krasnoeibeloe.ru.
@@ -39,7 +35,9 @@ import org.openstreetmap.josm.spi.preferences.Config;
 public final class KrasnoeBeloeProvider implements ChainProvider {
 
     private static final String SITE = "https://krasnoeibeloe.ru";
-    private static final String CACHE_NAME = "chainpoi-kb.json";
+    private static final String CACHE_PREFIX = "chainpoi-kb";
+    private static final String CACHE_NAME = CACHE_PREFIX + ".json";
+    private static final String REGION_INDEX = "chainpoi-kb-regions.json";
     private static final long TTL_MS = 7L * 24 * 60 * 60 * 1000;
     private static final String CHAIN_ID = "krasnoe-beloe";
     private static final String CHAIN = "К&Б";
@@ -83,94 +81,124 @@ public final class KrasnoeBeloeProvider implements ChainProvider {
         this.progress = progress == null ? s -> { } : progress;
     }
 
-    /** Есть ли свежий кэш (моложе 7 дней). */
-    public boolean hasFreshCache() {
-        Path cache = cacheFile();
-        try {
-            if (!Files.isRegularFile(cache)) {
-                return false;
-            }
-            return System.currentTimeMillis() - Files.getLastModifiedTime(cache).toMillis() < TTL_MS;
-        } catch (Exception ex) {
+    /** Есть ли свежий кэш для этой области. */
+    public boolean hasFreshCache(Bounds bbox) {
+        if (StoreCache.isFresh(CACHE_NAME, TTL_MS)) {
+            // Старый общий кэш: данных хватает на любую область.
+            return true;
+        }
+        RegionIndex index = new RegionIndex(REGION_INDEX);
+        if (index.isEmpty()) {
             return false;
         }
+        for (String id : index.intersecting(List.of(REGION_IDS), padded(bbox))) {
+            if (!StoreCache.isFresh(regionFile(id), TTL_MS)) {
+                return false;
+            }
+        }
+        // Пересекающихся регионов нет — в этом районе сети не бывает.
+        return true;
     }
 
     @Override
     public List<Store> fetch(Bounds bbox) throws Exception {
-        List<Store> all = readCache();
-        if (all == null) {
-            if (!allowDownload) {
-                return List.of();
-            }
-            all = downloadAll();
-            progress.accept("К&Б: сохраняю кэш");
-            writeCache(all);
-            progress.accept("К&Б: кэш сохранён");
-        } else if (allowDownload && !hasFreshCache()) {
-            // кэш устарел, но человек согласился обновить
-            all = downloadAll();
-            progress.accept("К&Б: сохраняю кэш");
-            writeCache(all);
-            progress.accept("К&Б: кэш сохранён");
+        if (StoreCache.isFresh(CACHE_NAME, TTL_MS)) {
+            return readLegacy(bbox);
         }
-        List<Store> out = new ArrayList<>();
-        for (Store s : all) {
-            if (bbox.contains(new LatLon(s.lat, s.lon))) {
-                out.add(s);
+        RegionIndex index = new RegionIndex(REGION_INDEX);
+        List<String> ids = List.of(REGION_IDS);
+        Bounds area = padded(bbox);
+        List<String> near = index.isEmpty()
+                ? new ArrayList<>(ids)
+                : index.intersecting(ids, area);
+        List<String> needed = new ArrayList<>();
+        for (String id : near) {
+            if (!StoreCache.isFresh(regionFile(id), TTL_MS)) {
+                needed.add(id);
             }
         }
-        return out;
+        if (!needed.isEmpty() && allowDownload) {
+            downloadRegions(needed, index, area);
+            // Первый полный проход строит индекс, но на диск кладём только
+            // регионы рядом с проверяемой областью.
+            near = index.intersecting(ids, area);
+        }
+        return readRegions(near, bbox);
     }
 
-    private List<Store> downloadAll() throws Exception {
-        Map<String, String> regions = new LinkedHashMap<>();
-        try {
-            String page = getText(SITE + "/address/");
-            Matcher select = Pattern.compile("(?is)<select[^>]*name=\"region\".*?</select>")
-                    .matcher(page);
-            if (select.find()) {
-                Matcher option = Pattern.compile(
-                        "<option[^>]*value=\"(\\d+)\"[^>]*>([^<]+)</option>")
-                        .matcher(select.group());
-                while (option.find()) {
-                    regions.put(option.group(1), option.group(2).trim());
-                }
-            }
-        } catch (Exception ex) {
-            // ниже возьмём встроенный список
-        }
-        if (regions.isEmpty()) {
-            for (String id : REGION_IDS) {
-                regions.put(id, id);
-            }
-        }
-
-        Map<String, Store> byCode = new LinkedHashMap<>();
+    private void downloadRegions(List<String> ids, RegionIndex index, Bounds area) throws Exception {
         int i = 0;
-        for (Map.Entry<String, String> region : regions.entrySet()) {
+        int total = 0;
+        for (String id : ids) {
             i++;
-            progress.accept("К&Б: регион " + i + " из " + regions.size());
+            progress.accept("К&Б: регион " + i + " из " + ids.size());
             JsonArray shops = null;
             for (int attempt = 0; attempt < 2 && shops == null; attempt++) {
                 try {
-                    shops = getJsonArray(SITE + "/api/regions/" + region.getKey() + "/shops/");
+                    shops = getJsonArray(SITE + "/api/regions/" + id + "/shops/");
                 } catch (Exception ex) {
                     if (attempt == 1) {
-                        throw new IllegalStateException("регион " + region.getValue()
-                                + ": " + ex.getMessage(), ex);
+                        break;
                     }
                 }
             }
+            if (shops == null) {
+                continue;
+            }
+            List<Store> region = new ArrayList<>();
             for (JsonValue v : shops) {
                 Store s = toStore(v.asJsonObject());
-                if (s != null && !byCode.containsKey(s.code)) {
-                    byCode.put(s.code, s);
+                if (s != null) {
+                    region.add(s);
+                }
+            }
+            index.update(id, region, System.currentTimeMillis());
+            if (index.intersects(id, area)) {
+                StoreCache.write(regionFile(id), region);
+            }
+            total += region.size();
+        }
+        index.save();
+        progress.accept("К&Б: загружено " + total + " магазинов");
+    }
+
+    private List<Store> readLegacy(Bounds bbox) {
+        List<Store> all = StoreCache.read(CACHE_NAME, CHAIN_ID, CHAIN, "store");
+        if (all == null) {
+            return List.of();
+        }
+        Map<String, Store> byCode = new LinkedHashMap<>();
+        for (Store s : all) {
+            if (bbox.contains(new LatLon(s.lat, s.lon))) {
+                byCode.putIfAbsent(s.code, s);
+            }
+        }
+        return new ArrayList<>(byCode.values());
+    }
+
+    private List<Store> readRegions(List<String> ids, Bounds bbox) {
+        Map<String, Store> byCode = new LinkedHashMap<>();
+        for (String id : ids) {
+            List<Store> region = StoreCache.read(regionFile(id), CHAIN_ID, CHAIN, "store");
+            if (region == null) {
+                continue;
+            }
+            for (Store s : region) {
+                if (bbox.contains(new LatLon(s.lat, s.lon))) {
+                    byCode.putIfAbsent(s.code, s);
                 }
             }
         }
-        progress.accept("К&Б: загружено " + byCode.size() + " магазинов");
         return new ArrayList<>(byCode.values());
+    }
+
+    private static String regionFile(String id) {
+        return CACHE_PREFIX + "-r" + id + ".json";
+    }
+
+    private static Bounds padded(Bounds b) {
+        return new Bounds(b.getMinLat() - 0.1, b.getMinLon() - 0.1,
+                b.getMaxLat() + 0.1, b.getMaxLon() + 0.1);
     }
 
     private Store toStore(JsonObject o) {
@@ -275,14 +303,6 @@ public final class KrasnoeBeloeProvider implements ChainProvider {
         return "";
     }
 
-    private String getText(String url) throws Exception {
-        HttpRequest req = request(url).GET().build();
-        HttpResponse<InputStream> resp = http.send(req, HttpResponse.BodyHandlers.ofInputStream());
-        try (InputStream in = stream(resp)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        }
-    }
-
     private JsonArray getJsonArray(String url) throws Exception {
         HttpRequest req = request(url).GET().build();
         HttpResponse<InputStream> resp = http.send(req, HttpResponse.BodyHandlers.ofInputStream());
@@ -309,68 +329,4 @@ public final class KrasnoeBeloeProvider implements ChainProvider {
         return body;
     }
 
-    // ------------------------------------------------------------------
-    // кэш
-    // ------------------------------------------------------------------
-
-    private static Path cacheFile() {
-        try {
-            if (Config.getDirs() != null) {
-                java.io.File dir = Config.getDirs().getUserDataDirectory(true);
-                if (dir != null) {
-                    return dir.toPath().resolve(CACHE_NAME);
-                }
-            }
-        } catch (RuntimeException ex) {
-            // в тестах каталоги JOSM могут быть не заданы
-        }
-        return java.nio.file.Paths.get(System.getProperty("java.io.tmpdir"), CACHE_NAME);
-    }
-
-    private List<Store> readCache() {
-        Path f = cacheFile();
-        if (!Files.isRegularFile(f)) {
-            return null;
-        }
-        try (InputStream in = Files.newInputStream(f);
-             JsonReader r = Json.createReader(in)) {
-            JsonObject root = r.readObject();
-            List<Store> out = new ArrayList<>();
-            for (JsonValue v : root.getJsonArray("shops")) {
-                JsonObject o = v.asJsonObject();
-                Map<String, String> tags = new LinkedHashMap<>();
-                for (String key : o.getJsonObject("tags").keySet()) {
-                    tags.put(key, o.getJsonObject("tags").getString(key));
-                }
-                out.add(new Store(CHAIN_ID, CHAIN, o.getString("code", ""),
-                        o.getString("address", ""), o.getJsonNumber("lat").doubleValue(),
-                        o.getJsonNumber("lon").doubleValue(), "store", tags));
-            }
-            return out;
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    private void writeCache(List<Store> shops) throws Exception {
-        Path f = cacheFile();
-        Files.createDirectories(f.getParent());
-        try (jakarta.json.stream.JsonGenerator g = Json.createGenerator(
-                Files.newBufferedWriter(f, StandardCharsets.UTF_8))) {
-            g.writeStartObject().writeStartArray("shops");
-            for (Store s : shops) {
-                g.writeStartObject()
-                        .write("code", s.code)
-                        .write("address", s.address)
-                        .write("lat", s.lat)
-                        .write("lon", s.lon)
-                        .writeStartObject("tags");
-                for (Map.Entry<String, String> e : s.tags.entrySet()) {
-                    g.write(e.getKey(), e.getValue());
-                }
-                g.writeEnd().writeEnd();
-            }
-            g.writeEnd().writeEnd();
-        }
-    }
 }

@@ -6,8 +6,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -24,8 +22,6 @@ import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 
 import org.openstreetmap.josm.data.Bounds;
-import org.openstreetmap.josm.data.coor.LatLon;
-import org.openstreetmap.josm.spi.preferences.Config;
 
 /**
  * «Ригла»: официальный GraphQL-список аптек pharmdelivery.ru.
@@ -37,7 +33,8 @@ import org.openstreetmap.josm.spi.preferences.Config;
 public final class RiglaProvider implements ChainProvider {
 
     private static final String ENDPOINT = "https://www.pharmdelivery.ru/graphql";
-    private static final String CACHE_NAME = "chainpoi-rigla.json";
+    private static final String CACHE_PREFIX = "chainpoi-rigla";
+    private static final String CACHE_NAME = CACHE_PREFIX + ".json";
     private static final long TTL_MS = 7L * 24 * 60 * 60 * 1000;
     private static final String CHAIN_ID = "rigla";
     private static final String CHAIN = "Ригла";
@@ -63,31 +60,17 @@ public final class RiglaProvider implements ChainProvider {
         this.progress = progress == null ? s -> { } : progress;
     }
 
-    public boolean hasFreshCache() {
-        Path f = cacheFile();
-        try {
-            return Files.isRegularFile(f)
-                    && System.currentTimeMillis() - Files.getLastModifiedTime(f).toMillis() < TTL_MS;
-        } catch (Exception ex) {
-            return false;
-        }
+    public boolean hasFreshCache(Bounds bbox) {
+        return AreaCache.hasFresh(CACHE_PREFIX, CACHE_NAME, bbox, TTL_MS);
     }
 
     @Override
     public List<Store> fetch(Bounds bbox) throws Exception {
-        List<Store> all = readCache();
-        if (all == null || !hasFreshCache()) {
-            progress.accept("Ригла: загрузка списка аптек");
-            all = download();
-            writeCache(all);
-        }
-        List<Store> out = new ArrayList<>();
-        for (Store s : all) {
-            if (bbox.contains(new LatLon(s.lat, s.lon))) {
-                out.add(s);
-            }
-        }
-        return out;
+        return AreaCache.fetch(CACHE_PREFIX, CACHE_NAME, CHAIN_ID, CHAIN, "pharmacy",
+                bbox, TTL_MS, () -> {
+                    progress.accept("Ригла: загрузка списка аптек");
+                    return download();
+                }, true);
     }
 
     private List<Store> download() throws Exception {
@@ -167,64 +150,4 @@ public final class RiglaProvider implements ChainProvider {
         return body;
     }
 
-    private static Path cacheFile() {
-        try {
-            if (Config.getDirs() != null) {
-                java.io.File dir = Config.getDirs().getUserDataDirectory(true);
-                if (dir != null) {
-                    return dir.toPath().resolve(CACHE_NAME);
-                }
-            }
-        } catch (RuntimeException ex) {
-            // тесты без каталогов JOSM
-        }
-        return java.nio.file.Paths.get(System.getProperty("java.io.tmpdir"), CACHE_NAME);
-    }
-
-    private List<Store> readCache() {
-        Path f = cacheFile();
-        if (!Files.isRegularFile(f)) {
-            return null;
-        }
-        try (InputStream in = Files.newInputStream(f);
-             JsonReader r = Json.createReader(in)) {
-            JsonObject root = r.readObject();
-            List<Store> out = new ArrayList<>();
-            for (JsonValue v : root.getJsonArray("shops")) {
-                JsonObject o = v.asJsonObject();
-                Map<String, String> tags = new LinkedHashMap<>();
-                for (String key : o.getJsonObject("tags").keySet()) {
-                    tags.put(key, o.getJsonObject("tags").getString(key));
-                }
-                out.add(new Store(CHAIN_ID, CHAIN, o.getString("code", ""),
-                        o.getString("address", ""), o.getJsonNumber("lat").doubleValue(),
-                        o.getJsonNumber("lon").doubleValue(), "pharmacy", tags));
-            }
-            return out;
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    private void writeCache(List<Store> shops) throws Exception {
-        Path f = cacheFile();
-        Files.createDirectories(f.getParent());
-        try (jakarta.json.stream.JsonGenerator g = Json.createGenerator(
-                Files.newBufferedWriter(f, StandardCharsets.UTF_8))) {
-            g.writeStartObject().writeStartArray("shops");
-            for (Store s : shops) {
-                g.writeStartObject()
-                        .write("code", s.code)
-                        .write("address", s.address)
-                        .write("lat", s.lat)
-                        .write("lon", s.lon)
-                        .writeStartObject("tags");
-                for (Map.Entry<String, String> e : s.tags.entrySet()) {
-                    g.write(e.getKey(), e.getValue());
-                }
-                g.writeEnd().writeEnd();
-            }
-            g.writeEnd().writeEnd();
-        }
-    }
 }

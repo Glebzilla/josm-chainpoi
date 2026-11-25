@@ -41,6 +41,16 @@ public final class Sources {
                 return "ярче.рф";
             case "maria-ra":
                 return "maria-ra.ru";
+            case "lukoil":
+                return "lukoil.ru";
+            case "gazpromneft":
+                return "gpnbonus.ru";
+            case "tatneft":
+                return "tatneft.ru";
+            case "taif":
+                return "taifazs.ru";
+            case "topline":
+                return "azs-topline.ru";
             case "rigla":
                 return "rigla.ru";
             default:

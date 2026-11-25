@@ -38,8 +38,20 @@ public final class Profile {
     /** Постоянная пометка о источнике (показывается в подробностях). */
     public String note;
 
+    /** Профиль только для импорта из файла: в панели кнопки нет. */
+    public boolean fileOnly;
+
+    /** Искать объект по адресу, если по координатам рядом ничего не нашлось. */
+    public boolean matchByAddress;
+
     /** Группа для одного переключателя, например «Аптеки». */
     public String group;
+
+    /** Помечает профиль как доступный только через файл. */
+    public Profile fileOnly() {
+        this.fileOnly = true;
+        return this;
+    }
 
     /** Помечает источник неполным (цепочка вызовов при создании профиля). */
     public Profile incompleteSource() {
@@ -56,6 +68,12 @@ public final class Profile {
     /** Радиус сверки для сетей с неточными координатами. */
     public Profile withRadius(double meters) {
         this.maxDistance = meters;
+        return this;
+    }
+
+    /** Разрешить поиск по адресу, когда координаты не дали результата. */
+    public Profile byAddress() {
+        this.matchByAddress = true;
         return this;
     }
 

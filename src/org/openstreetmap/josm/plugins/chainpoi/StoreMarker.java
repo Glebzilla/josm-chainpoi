@@ -122,6 +122,14 @@ final class StoreMarker implements MapViewPaintable {
                 return new Color(0x00, 0x84, 0x3D);
             case "maria-ra":
                 return new Color(0xF5, 0x82, 0x20);
+            case "lukoil":
+                return new Color(0xD1, 0x1E, 0x2A);
+            case "gazpromneft":
+                return new Color(0x1B, 0x5E, 0x9A);
+            case "tatneft":
+                return new Color(0x00, 0x84, 0x3D);
+            case "taif":
+                return new Color(0x1B, 0x5E, 0x9A);
             default:
                 return new Color(0x1B, 0x5E, 0x9A);
         }

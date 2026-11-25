@@ -33,7 +33,8 @@ import org.openstreetmap.josm.data.coor.LatLon;
 public final class MariaRaProvider implements ChainProvider {
 
     private static final String PAGE = "https://www.maria-ra.ru/o-kompanii/karta-seti/";
-    private static final String CACHE_NAME = "chainpoi-maria-ra.json";
+    private static final String CACHE_PREFIX = "chainpoi-maria-ra";
+    private static final String CACHE_NAME = CACHE_PREFIX + ".json";
     private static final long TTL_MS = 7L * 24 * 60 * 60 * 1000;
     private static final String CHAIN_ID = "maria-ra";
     private static final String CHAIN = "Мария-Ра";
@@ -67,30 +68,14 @@ public final class MariaRaProvider implements ChainProvider {
         this.allowDownload = allow;
     }
 
-    public boolean hasFreshCache() {
-        return StoreCache.isFresh(CACHE_NAME, TTL_MS);
+    public boolean hasFreshCache(Bounds bbox) {
+        return AreaCache.hasFresh(CACHE_PREFIX, CACHE_NAME, bbox, TTL_MS);
     }
 
     @Override
     public List<Store> fetch(Bounds bbox) throws Exception {
-        List<Store> all = StoreCache.read(CACHE_NAME, CHAIN_ID, CHAIN, "supermarket");
-        if (all == null) {
-            if (!allowDownload) {
-                return List.of();
-            }
-            all = downloadAll();
-            StoreCache.write(CACHE_NAME, all);
-        } else if (allowDownload && !hasFreshCache()) {
-            all = downloadAll();
-            StoreCache.write(CACHE_NAME, all);
-        }
-        List<Store> out = new ArrayList<>();
-        for (Store s : all) {
-            if (bbox.contains(new LatLon(s.lat, s.lon))) {
-                out.add(s);
-            }
-        }
-        return out;
+        return AreaCache.fetch(CACHE_PREFIX, CACHE_NAME, CHAIN_ID, CHAIN, "supermarket",
+                bbox, TTL_MS, () -> allowDownload ? downloadAll() : null, true);
     }
 
     private List<Store> downloadAll() throws Exception {

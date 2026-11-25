@@ -5,9 +5,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -25,8 +22,6 @@ import jakarta.json.JsonValue;
 import jakarta.json.stream.JsonParser;
 
 import org.openstreetmap.josm.data.Bounds;
-import org.openstreetmap.josm.data.coor.LatLon;
-import org.openstreetmap.josm.spi.preferences.Config;
 
 /**
  * Wildberries: справочник ПВЗ одним статическим JSON.
@@ -37,7 +32,8 @@ import org.openstreetmap.josm.spi.preferences.Config;
 public final class WildberriesProvider implements ChainProvider {
 
     private static final String BASE = "https://static-basket-01.wb.ru/vol0/data/all-poo-fr-v";
-    private static final String CACHE_NAME = "chainpoi-wb.json";
+    private static final String CACHE_PREFIX = "chainpoi-wb";
+    private static final String CACHE_NAME = CACHE_PREFIX + ".json";
     private static final long TTL_MS = 7L * 24 * 60 * 60 * 1000;
     private static final String CHAIN_ID = "wildberries";
     private static final String CHAIN = "Wildberries";
@@ -68,38 +64,21 @@ public final class WildberriesProvider implements ChainProvider {
         this.progress = progress == null ? s -> { } : progress;
     }
 
-    public boolean hasFreshCache() {
-        Path cache = cacheFile();
-        try {
-            return Files.isRegularFile(cache)
-                    && System.currentTimeMillis() - Files.getLastModifiedTime(cache).toMillis() < TTL_MS;
-        } catch (Exception ex) {
-            return false;
-        }
+    public boolean hasFreshCache(Bounds bbox) {
+        return AreaCache.hasFresh(CACHE_PREFIX, CACHE_NAME, bbox, TTL_MS);
     }
 
     @Override
     public List<Store> fetch(Bounds bbox) throws Exception {
-        List<Store> all = readCache();
-        if (all == null) {
-            if (!allowDownload) {
-                return List.of();
-            }
-            all = downloadAndParse();
-            progress.accept("WB: сохраняю кэш");
-            writeCache(all);
-        } else if (allowDownload && !hasFreshCache()) {
-            all = downloadAndParse();
-            progress.accept("WB: сохраняю кэш");
-            writeCache(all);
-        }
-        List<Store> out = new ArrayList<>();
-        for (Store s : all) {
-            if (bbox.contains(new LatLon(s.lat, s.lon))) {
-                out.add(s);
-            }
-        }
-        return out;
+        return AreaCache.fetch(CACHE_PREFIX, CACHE_NAME, CHAIN_ID, CHAIN, "pvz",
+                bbox, TTL_MS, () -> {
+                    if (!allowDownload) {
+                        return null;
+                    }
+                    List<Store> all = downloadAndParse();
+                    progress.accept("WB: сохраняю кэш");
+                    return all;
+                }, true);
     }
 
     private List<Store> downloadAndParse() throws Exception {
@@ -343,68 +322,4 @@ public final class WildberriesProvider implements ChainProvider {
         return body;
     }
 
-    // ------------------------------------------------------------------
-    // кэш
-    // ------------------------------------------------------------------
-
-    private static Path cacheFile() {
-        try {
-            if (Config.getDirs() != null) {
-                java.io.File dir = Config.getDirs().getUserDataDirectory(true);
-                if (dir != null) {
-                    return dir.toPath().resolve(CACHE_NAME);
-                }
-            }
-        } catch (RuntimeException ex) {
-            // тесты без каталогов JOSM
-        }
-        return java.nio.file.Paths.get(System.getProperty("java.io.tmpdir"), CACHE_NAME);
-    }
-
-    private List<Store> readCache() {
-        Path f = cacheFile();
-        if (!Files.isRegularFile(f)) {
-            return null;
-        }
-        try (InputStream in = Files.newInputStream(f);
-             JsonReader r = Json.createReader(in)) {
-            JsonObject root = r.readObject();
-            List<Store> out = new ArrayList<>();
-            for (JsonValue v : root.getJsonArray("shops")) {
-                JsonObject o = v.asJsonObject();
-                Map<String, String> tags = new LinkedHashMap<>();
-                for (String key : o.getJsonObject("tags").keySet()) {
-                    tags.put(key, o.getJsonObject("tags").getString(key));
-                }
-                out.add(new Store(CHAIN_ID, CHAIN, o.getString("code", ""),
-                        o.getString("address", ""), o.getJsonNumber("lat").doubleValue(),
-                        o.getJsonNumber("lon").doubleValue(), "pvz", tags));
-            }
-            return out;
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    private void writeCache(List<Store> shops) throws Exception {
-        Path f = cacheFile();
-        Files.createDirectories(f.getParent());
-        try (jakarta.json.stream.JsonGenerator g = Json.createGenerator(
-                Files.newBufferedWriter(f, StandardCharsets.UTF_8))) {
-            g.writeStartObject().writeStartArray("shops");
-            for (Store s : shops) {
-                g.writeStartObject()
-                        .write("code", s.code)
-                        .write("address", s.address)
-                        .write("lat", s.lat)
-                        .write("lon", s.lon)
-                        .writeStartObject("tags");
-                for (Map.Entry<String, String> e : s.tags.entrySet()) {
-                    g.write(e.getKey(), e.getValue());
-                }
-                g.writeEnd().writeEnd();
-            }
-            g.writeEnd().writeEnd();
-        }
-    }
 }

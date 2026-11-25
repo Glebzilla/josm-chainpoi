@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
+import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.tools.Geometry;
 
@@ -33,6 +34,14 @@ public final class AddressTags {
     };
 
     private static final Pattern HOUSE = Pattern.compile("^(?:д|дом)\\.?\\s*(\\S+)$");
+    private static final Pattern HOUSE_LOOSE = Pattern.compile(
+            "^(?:д|дом|стр|строение|вл|владение)\\.?\\s*(\\S+)$");
+    private static final Pattern HOUSE_ALONE = Pattern.compile(
+            "\\d+[а-яa-z]?(?:[/-]\\d+[а-яa-z]?)?");
+    private static final Pattern STREET_PREFIX = Pattern.compile(
+            "(?iu)^(ул|улица|пр|пр-т|просп|проспект|ш|шоссе|б-р|бульвар|"
+            + "наб|набережная|пл|площадь|пер|переулок|проезд|туп|тупик|"
+            + "мкр|микрорайон)\\.?\\s+");
 
     public final String street;
     public final String housenumber;
@@ -120,6 +129,98 @@ public final class AddressTags {
             return null;
         }
         return new AddressTags(street, house);
+    }
+
+    /**
+     * Более свободный разбор адреса для сверки: не требует приставки «ул.».
+     *
+     * <p>Берёт последнюю часть с номером дома и часть перед ней как улицу:
+     * {@code «Россия, Омск, 1-я Военная, 2»} → улица «1-я Военная», дом «2».
+     */
+    static AddressTags parseLoose(String address) {
+        if (address == null || address.isEmpty()) {
+            return null;
+        }
+        String[] parts = address.split(",");
+        int houseIndex = -1;
+        String house = null;
+        for (int i = parts.length - 1; i >= 0; i--) {
+            String h = houseNumber(parts[i].trim());
+            if (h != null) {
+                house = h;
+                houseIndex = i;
+                break;
+            }
+        }
+        if (house == null || houseIndex < 1) {
+            return null;
+        }
+        for (int i = houseIndex - 1; i >= 0; i--) {
+            String street = streetName(parts[i].trim());
+            if (street != null) {
+                return new AddressTags(street, house);
+            }
+        }
+        return null;
+    }
+
+    /** Адрес самого объекта OSM или здания, в котором стоит точка. */
+    static AddressTags ofPrimitive(OsmPrimitive p) {
+        if (p == null) {
+            return null;
+        }
+        AddressTags own = ofTags(p);
+        if (own != null) {
+            return own;
+        }
+        if (p instanceof Node) {
+            for (Way w : ((Node) p).getParentWays()) {
+                if (w.isDeleted() || w.isIncomplete()) {
+                    continue;
+                }
+                AddressTags building = ofTags(w);
+                if (building != null) {
+                    return building;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static AddressTags ofTags(OsmPrimitive p) {
+        String street = p.get("addr:street");
+        String house = p.get("addr:housenumber");
+        if (street == null && house == null) {
+            return null;
+        }
+        return new AddressTags(street, house);
+    }
+
+    private static String houseNumber(String part) {
+        String low = part.toLowerCase(Locale.ROOT);
+        Matcher m = HOUSE_LOOSE.matcher(low);
+        if (m.matches()) {
+            return m.group(1);
+        }
+        if (HOUSE_ALONE.matcher(low).matches()) {
+            return part;
+        }
+        return null;
+    }
+
+    private static String streetName(String part) {
+        String s = part.trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        String low = s.toLowerCase(Locale.ROOT);
+        if (low.equals("россия") || low.equals("российская федерация")
+                || low.endsWith(" область") || low.endsWith(" район")
+                || low.endsWith(" край") || low.endsWith(" республика")) {
+            return null;
+        }
+        s = STREET_PREFIX.matcher(s).replaceFirst("");
+        return s.isEmpty() ? null : s;
     }
 
     /** Теги адреса, которых не хватает в карте тегов. */

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
@@ -36,6 +37,10 @@ public final class Matcher {
     /** Ключи, которые проверяем, только если адрес уже стоит на объекте. */
     private static final List<String> ADDR_KEYS = List.of("addr:street", "addr:housenumber");
 
+    /** «АЗС №5», «АЗС 5», «АЗК №12» — номер станции, а не название. */
+    private static final Pattern STATION_NUMBER_IN_NAME = Pattern.compile(
+            "(?iu).*№\\s*\\d+.*|^(?:азс|азк)\\s*\\d+.*");
+
     private static final Set<String> STREET_WORDS = new HashSet<>(List.of(
             "улица", "ул", "проспект", "пр-т", "просп", "переулок", "пер",
             "шоссе", "ш", "бульвар", "б-р", "набережная", "наб", "площадь", "пл",
@@ -51,42 +56,60 @@ public final class Matcher {
         Profile profile = Profiles.get(store.chainId);
         OsmPrimitive best = null;
         double bestDistance = Double.MAX_VALUE;
+        boolean byAddress = false;
 
-        for (Node n : ds.getNodes()) {
-            if (usable(n) && profile.matches(n)) {
-                double d = distance(store.lat, store.lon, n.lat(), n.lon());
-                if (d < bestDistance) {
-                    bestDistance = d;
-                    best = n;
-                }
+        // У сетей с проверенным адресом сначала пробуем адрес: он надёжнее
+        // координат, если сайт ставит точки «на глаз».
+        if (profile.matchByAddress) {
+            OsmPrimitive addressMatch = findAddressMatch(store, ds, profile);
+            if (addressMatch != null) {
+                best = addressMatch;
+                LatLon c = center(addressMatch);
+                bestDistance = c != null && hasCoordinates(store)
+                        ? distance(store.lat, store.lon, c.lat(), c.lon()) : 0;
+                byAddress = true;
             }
         }
-        for (Way w : ds.getWays()) {
-            if (usable(w) && w.hasKey("shop") && profile.matches(w)) {
-                LatLon c = center(w);
-                if (c != null) {
-                    double d = distance(store.lat, store.lon, c.lat(), c.lon());
+
+        if (!byAddress) {
+            for (Node n : ds.getNodes()) {
+                if (usable(n) && profile.matches(n)) {
+                    double d = distance(store.lat, store.lon, n.lat(), n.lon());
                     if (d < bestDistance) {
                         bestDistance = d;
-                        best = w;
+                        best = n;
+                    }
+                }
+            }
+            for (Way w : ds.getWays()) {
+                if (usable(w) && (w.hasKey("shop") || w.hasKey("amenity"))
+                        && profile.matches(w)) {
+                    LatLon c = center(w);
+                    if (c != null) {
+                        double d = distance(store.lat, store.lon, c.lat(), c.lon());
+                        if (d < bestDistance) {
+                            bestDistance = d;
+                            best = w;
+                        }
+                    }
+                }
+            }
+            for (Relation r : ds.getRelations()) {
+                if (usable(r) && (r.hasKey("shop") || r.hasKey("amenity"))
+                        && profile.matches(r)) {
+                    LatLon c = center(r);
+                    if (c != null) {
+                        double d = distance(store.lat, store.lon, c.lat(), c.lon());
+                        if (d < bestDistance) {
+                            bestDistance = d;
+                            best = r;
+                        }
                     }
                 }
             }
         }
-        for (Relation r : ds.getRelations()) {
-            if (usable(r) && r.hasKey("shop") && profile.matches(r)) {
-                LatLon c = center(r);
-                if (c != null) {
-                    double d = distance(store.lat, store.lon, c.lat(), c.lon());
-                    if (d < bestDistance) {
-                        bestDistance = d;
-                        best = r;
-                    }
-                }
-            }
-        }
 
-        if (best == null || bestDistance > profile.maxDistance) {
+        if ((best == null || bestDistance > profile.maxDistance) && !byAddress) {
             OsmPrimitive other = findMKos(store, ds);
             if (other != null) {
                 LatLon c = center(other);
@@ -109,10 +132,21 @@ public final class Matcher {
             return Match.missing();
         }
 
-        List<FieldDiff> diffs = compare(store, best, ds, profile);
+        List<FieldDiff> diffs = compare(store, best, ds, profile, byAddress);
         List<String> warnings = new ArrayList<>();
-        boolean bad = geometryWarnings(best, bestDistance, warnings);
+        boolean bad = geometryWarnings(best, byAddress ? 0 : bestDistance, warnings);
+        if (byAddress) {
+            warnings.add("Совпадение по адресу, а не по координатам: проверьте, тот ли это объект.");
+        }
         warnings.addAll(profile.warnings(store, diffs));
+        if ("fuel".equals(best.get("amenity"))) {
+            String name = best.get("name");
+            if (name != null && STATION_NUMBER_IN_NAME.matcher(basic(name)).matches()) {
+                warnings.add("В name указан номер АЗС. По правилам OSM номер станции "
+                        + "пишется в ref без «№» и слова «АЗС», а name — это название "
+                        + "или бренд (например, «Топлайн»).");
+            }
+        }
 
         Match.Status status;
         if (bad) {
@@ -232,6 +266,72 @@ public final class Matcher {
         return out;
     }
 
+    /**
+     * Объект сети с тем же адресом, что и у сети.
+     *
+     * <p>Нужен, когда координаты сети неточные или их нет. Сравниваются
+     * улица (без типа и регистра) и номер дома; город отдельно не проверяем,
+     * потому что сверка идёт внутри загруженной области.
+     */
+    private static OsmPrimitive findAddressMatch(Store store, DataSet ds, Profile profile) {
+        AddressTags target = AddressTags.parseLoose(store.address);
+        if (target == null || target.street == null || target.housenumber == null) {
+            return null;
+        }
+        List<OsmPrimitive> found = new ArrayList<>();
+        for (Node n : ds.getNodes()) {
+            if (usable(n) && profile.matches(n) && sameAddress(n, target)) {
+                found.add(n);
+            }
+        }
+        for (Way w : ds.getWays()) {
+            if (usable(w) && (w.hasKey("shop") || w.hasKey("amenity"))
+                    && profile.matches(w) && sameAddress(w, target)) {
+                found.add(w);
+            }
+        }
+        for (Relation r : ds.getRelations()) {
+            if (usable(r) && (r.hasKey("shop") || r.hasKey("amenity"))
+                    && profile.matches(r) && sameAddress(r, target)) {
+                found.add(r);
+            }
+        }
+        if (found.isEmpty()) {
+            return null;
+        }
+        if (!hasCoordinates(store)) {
+            return found.get(0);
+        }
+        OsmPrimitive best = found.get(0);
+        double bestDistance = Double.MAX_VALUE;
+        for (OsmPrimitive p : found) {
+            LatLon c = center(p);
+            if (c == null) {
+                continue;
+            }
+            double d = distance(store.lat, store.lon, c.lat(), c.lon());
+            if (d < bestDistance) {
+                bestDistance = d;
+                best = p;
+            }
+        }
+        return best;
+    }
+
+    private static boolean sameAddress(OsmPrimitive p, AddressTags target) {
+        AddressTags address = AddressTags.ofPrimitive(p);
+        if (address == null || address.street == null || address.housenumber == null) {
+            return false;
+        }
+        return sameStreet(address.street, target.street)
+                && normHouse(address.housenumber).equals(normHouse(target.housenumber));
+    }
+
+    private static boolean hasCoordinates(Store store) {
+        return !Double.isNaN(store.lat) && !Double.isNaN(store.lon)
+                && (store.lat != 0 || store.lon != 0);
+    }
+
     /** Ближайший объект «М.Кос» в пределах общего радиуса поиска. */
     private static OsmPrimitive findMKos(Store store, DataSet ds) {
         OsmPrimitive best = null;
@@ -285,9 +385,12 @@ public final class Matcher {
         return best;
     }
 
-    private static List<FieldDiff> compare(Store store, OsmPrimitive p, DataSet ds, Profile profile) {
+    private static List<FieldDiff> compare(Store store, OsmPrimitive p, DataSet ds,
+                                           Profile profile, boolean byAddress) {
         Map<String, String> expected = profile.createTags(store);
-        AddressTags address = AddressTags.derive(store, ds);
+        AddressTags address = byAddress
+                ? AddressTags.parseLoose(store.address)
+                : AddressTags.derive(store, ds);
         List<FieldDiff> diffs = new ArrayList<>();
         for (String key : profile.keys) {
             String chain = expected.get(key);

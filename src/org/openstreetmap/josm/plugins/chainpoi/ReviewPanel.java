@@ -69,9 +69,15 @@ public class ReviewPanel extends ToggleDialog {
     private final RiglaProvider riglaProvider = new RiglaProvider();
     private final YarcheProvider yarcheProvider = new YarcheProvider();
     private final MariaRaProvider mariaRaProvider = new MariaRaProvider();
+    private final LukoilProvider lukoilProvider = new LukoilProvider();
+    private final GazpromneftProvider gazpromneftProvider = new GazpromneftProvider();
+    private final TatneftProvider tatneftProvider = new TatneftProvider();
+    private final TaifProvider taifProvider = new TaifProvider();
+    private final ToplineProvider toplineProvider = new ToplineProvider();
     private final List<ChainProvider> providers = List.of(
             new MagnitProvider(), new PyaterochkaProvider(), kbProvider, wbProvider,
-            riglaProvider, yarcheProvider, mariaRaProvider);
+            riglaProvider, yarcheProvider, mariaRaProvider,
+            lukoilProvider, gazpromneftProvider, tatneftProvider, taifProvider, toplineProvider);
 
     private final ReviewTableModel model = new ReviewTableModel();
     private final JTable table = new JTable(model);
@@ -92,7 +98,8 @@ public class ReviewPanel extends ToggleDialog {
     /** Сети, для которых есть прямой источник данных. */
     private static final Set<String> DIRECT_CHAINS = Set.of(
             "magnit", "magnit-kosmetik", "pyaterochka",
-            "krasnoe-beloe", "wildberries", "rigla", "yarche", "maria-ra");
+            "krasnoe-beloe", "wildberries", "rigla", "yarche", "maria-ra",
+            "lukoil", "gazpromneft", "tatneft", "taif", "topline");
 
     /** Сети, загруженные из файла (для них переключателя нет). */
     private final Set<String> fileChains = new LinkedHashSet<>();
@@ -271,7 +278,7 @@ public class ReviewPanel extends ToggleDialog {
         }
 
         if (enabledChains.contains("krasnoe-beloe")) {
-            if (!kbProvider.hasFreshCache()) {
+            if (!kbProvider.hasFreshCache(bounds)) {
                 int answer = JOptionPane.showConfirmDialog(this,
                         "Загрузить данные «Красное&Белое»?\n\n"
                         + "Около 76 запросов к krasnoeibeloe.ru, 6–7 МБ.\n"
@@ -288,7 +295,7 @@ public class ReviewPanel extends ToggleDialog {
         kbProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
 
         if (enabledChains.contains("wildberries")) {
-            if (!wbProvider.hasFreshCache()) {
+            if (!wbProvider.hasFreshCache(bounds)) {
                 int answer = JOptionPane.showConfirmDialog(this,
                         "Загрузить справочник Wildberries?\n\n"
                         + "Один файл ~75 МБ, около 72 тыс. ПВЗ (постаматы пропускаются).\n"
@@ -305,7 +312,7 @@ public class ReviewPanel extends ToggleDialog {
         wbProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
 
         if (enabledChains.contains("yarche")) {
-            if (!yarcheProvider.hasFreshCache()) {
+            if (!yarcheProvider.hasFreshCache(bounds)) {
                 int answer = JOptionPane.showConfirmDialog(this,
                         "Загрузить список «Ярче!»?\n\n"
                         + "31 запрос по регионам, несколько МБ.\n"
@@ -321,25 +328,83 @@ public class ReviewPanel extends ToggleDialog {
         }
 
         if (enabledChains.contains("maria-ra")) {
-            // Один небольшой запрос: кэш ~200 КБ, разрешение не спрашиваем.
+            // Один небольшой запрос: кэш только рядом с областью, разрешение не спрашиваем.
             mariaRaProvider.setAllowDownload(true);
         } else {
             mariaRaProvider.setAllowDownload(false);
         }
 
+        boolean fuelEnabled = enabledChains.contains("lukoil")
+                || enabledChains.contains("gazpromneft")
+                || enabledChains.contains("tatneft")
+                || enabledChains.contains("taif")
+                || enabledChains.contains("topline");
+        if (fuelEnabled) {
+            boolean fresh = true;
+            if (enabledChains.contains("lukoil") && !lukoilProvider.hasFreshCache(bounds)) {
+                fresh = false;
+            }
+            if (enabledChains.contains("gazpromneft") && !gazpromneftProvider.hasFreshCache(bounds)) {
+                fresh = false;
+            }
+            if (enabledChains.contains("tatneft") && !tatneftProvider.hasFreshCache(bounds)) {
+                fresh = false;
+            }
+            if (enabledChains.contains("taif") && !taifProvider.hasFreshCache(bounds)) {
+                fresh = false;
+            }
+            if (enabledChains.contains("topline") && !toplineProvider.hasFreshCache(bounds)) {
+                fresh = false;
+            }
+            boolean allow = true;
+            if (!fresh) {
+                int answer = JOptionPane.showConfirmDialog(this,
+                        "Загрузить данные АЗС?\n\n"
+                        + "Лукойл, Газпромнефть, Татнефть, ТАИФ-НК и Топлайн — до пяти запросов, около 8 МБ.\n"
+                        + "В кэш попадут только АЗС рядом с текущей областью.\n"
+                        + "Кэш хранится 7 дней.",
+                        "Сетевые АЗС", JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+                allow = answer == JOptionPane.YES_OPTION;
+            }
+            lukoilProvider.setAllowDownload(allow);
+            gazpromneftProvider.setAllowDownload(allow);
+            tatneftProvider.setAllowDownload(allow);
+            taifProvider.setAllowDownload(allow);
+            toplineProvider.setAllowDownload(allow);
+        } else {
+            lukoilProvider.setAllowDownload(false);
+            gazpromneftProvider.setAllowDownload(false);
+            tatneftProvider.setAllowDownload(false);
+            taifProvider.setAllowDownload(false);
+            toplineProvider.setAllowDownload(false);
+        }
+
         riglaProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
         yarcheProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
         mariaRaProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+        lukoilProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+        gazpromneftProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+        tatneftProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+        taifProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+        toplineProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
 
         checkButton.setEnabled(false);
         applyButton.setEnabled(false);
-        status.setText("Запрос к Магниту…");
+        status.setText("Запрос к сетям…");
 
         Bounds query = bounds;
+        Set<String> enabled = new java.util.HashSet<>(enabledChains);
         new Thread(() -> {
             try {
                 List<Store> fetched = new ArrayList<>();
                 for (ChainProvider provider : providers) {
+                    boolean on = enabled.contains(provider.id())
+                            || ("magnit".equals(provider.id())
+                                && enabled.contains("magnit-kosmetik"));
+                    if (!on) {
+                        continue;
+                    }
                     try {
                         fetched.addAll(provider.fetch(query));
                     } catch (Exception ex) {
@@ -514,6 +579,16 @@ public class ReviewPanel extends ToggleDialog {
                 return "Ярче";
             case "maria-ra":
                 return "М-Ра";
+            case "lukoil":
+                return "Лукойл";
+            case "gazpromneft":
+                return "ГПН";
+            case "tatneft":
+                return "Татнефть";
+            case "taif":
+                return "ТАИФ";
+            case "topline":
+                return "ТПЛ";
             default:
                 return fallback;
         }
@@ -657,6 +732,9 @@ public class ReviewPanel extends ToggleDialog {
         List<java.awt.Component> items = new ArrayList<>();
         java.util.Set<String> groupsDone = new java.util.HashSet<>();
         for (Profile profile : Profiles.all()) {
+            if (profile.fileOnly) {
+                continue;
+            }
             if (!DIRECT_CHAINS.contains(profile.id)) {
                 javax.swing.Icon icon = chainIcon(iconFor(profile.id), 18);
                 javax.swing.JLabel hintLabel = new javax.swing.JLabel(profile.name, greyIcon(icon),
@@ -680,7 +758,7 @@ public class ReviewPanel extends ToggleDialog {
                 }
                 key = "group:" + profile.group;
                 label = profile.group;
-                iconName = "chain-pharmacy";
+                iconName = "АЗС".equals(profile.group) ? "chain-fuel" : "chain-pharmacy";
                 ids = new ArrayList<>();
                 for (Profile p : Profiles.all()) {
                     if (DIRECT_CHAINS.contains(p.id) && profile.group.equals(p.group)) {
@@ -704,6 +782,9 @@ public class ReviewPanel extends ToggleDialog {
             box.setSelected(onByDefault);
             box.setFocusable(false);
             box.setMargin(new java.awt.Insets(1, 3, 1, 3));
+            box.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+            box.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+            box.setIconTextGap(1);
             String tip = profile.group != null
                     ? "Проверять все сети группы «" + label + "»"
                     : "Проверять сеть «" + profile.name + "»"
@@ -792,6 +873,16 @@ public class ReviewPanel extends ToggleDialog {
                 return "chain-yarche";
             case "maria-ra":
                 return "chain-maria-ra";
+            case "lukoil":
+                return "chain-lukoil";
+            case "gazpromneft":
+                return "chain-gazpromneft";
+            case "tatneft":
+                return "chain-tatneft";
+            case "taif":
+                return "chain-taif";
+            case "topline":
+                return "chain-fuel";
             default:
                 return "chainpoi";
         }

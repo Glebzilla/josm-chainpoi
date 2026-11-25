@@ -8,8 +8,9 @@ differ, and (per checkbox) creates objects in the current layer.
 Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
 **M.Kosmetik** (`DG`), **Pyaterochka** (source: the chain's job vacancy database),
 **Krasnoe&Beloe** (the chain's address catalogue), **Wildberries**
-(a ~75 MB pickup-point file downloaded automatically), **Rigla**
-(official GraphQL pharmacy list), **Yarche!** and **Maria-Ra**.
+(a ~75 MB pickup-point file downloaded after confirmation), **Rigla**
+(official GraphQL pharmacy list), **Yarche!**, **Maria-Ra**, and fuel
+stations: **Lukoil**, **Gazpromneft**, **Tatneft**, **TAIF-NK**, **Topline**.
 
 ![Chain stores panel in JOSM](docs/screenshot.png)
 
@@ -25,18 +26,26 @@ Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
    stores are mixed together.
    Magnit, M.Kosmetik and Pyaterochka are queried directly. Pyaterochka comes
    from the rabota5ka.ru vacancy database, so only stores that are hiring appear.
+   Disabled chains are not queried at all.
    For **Krasnoe&Beloe** the plugin asks permission on the first check: about
-   75 requests to the chain's catalogue, 6–7 MB, cached for 7 days. If you
-   decline, the chain is skipped for this check.
-   For **Wildberries** the plugin downloads one ~75 MB file (~72k pickup points)
-   automatically; permission is asked on the first check, cached for 7 days.
-   Parcel lockers are skipped for now: in OSM they are `amenity=parcel_locker`,
-   not pickup points.
-   **Rigla** is fetched with one GraphQL request (~1k pharmacies), cached for 7 days.
-   **Yarche!** is fetched from 31 regional pages with addresses and coordinates,
-   cached for 7 days. **Maria-Ra** comes from one “Store map” page containing
-   JSON points and hours, cached for 7 days. The **Кэш** button clears all saved
-   lists; the next check downloads them again.
+   76 requests to the chain's catalogue, 6–7 MB. It remembers region bounds and
+   afterwards requests only the regions near the current area; only stores in
+   that area are cached. If you decline, the chain is skipped for this check.
+   For **Wildberries** the plugin downloads one ~75 MB file (~72k pickup points);
+   permission is asked for the first area, and only nearby pickup points are
+   cached. Parcel lockers are skipped for now: in OSM they are
+   `amenity=parcel_locker`, not pickup points.
+   **Rigla** is fetched with one GraphQL request (~1k pharmacies).
+   **Yarche!** is fetched from 31 regional pages with addresses and coordinates:
+   all on the first run, then only nearby regions. **Maria-Ra** comes from one
+   “Store map” page containing JSON points and hours. **Lukoil**,
+   **Gazpromneft**, **Tatneft**, **TAIF-NK** and **Topline** fuel stations come
+   from the chains' official locators after confirmation; fuel types are
+   written as `fuel:diesel`, `fuel:octane_92`, `fuel:octane_95`, etc.
+   The cache is stored in 1°×1° tiles and only for areas you have checked:
+   mapping in Krasnodar does not put Far East fuel stations on disk. Data is
+   refreshed every 7 days; tiles not requested for a month are deleted. The
+   **Кэш** button clears all saved lists; the next check downloads them again.
    All pharmacy chains share one **Аптеки** toggle (the “+” icon).
    For Ozon (and other chains without an open API) there is an **Import…**
    button — see [bookmarklets/README.md](bookmarklets/README.md).
@@ -194,6 +203,35 @@ For **Maria-Ra** — `shop=supermarket`, `name`/`brand` = «Мария-Ра»,
 `brand:wikidata=Q4281631`. If the map provides opening hours, they are added
 as `opening_hours`.
 
+For fuel stations the plugin writes `amenity=fuel`, `name`/`brand` and
+`brand:wikidata`. Fuel types from the official locators become
+`fuel:diesel`, `fuel:octane_80/92/95/98/100`, `fuel:lpg`, `fuel:cng` and
+`fuel:lng`.
+
+For 53 fuel chains without an open API, import and recognition profiles are
+included: Rosneft, Teboil, Gazprom, Bashneft, Neftmagistral, Kalina Oil,
+Dvizhenie, ORTK, VTK, PRIME, Baltneft, LTK, Kirishiavtoreservis,
+Atan, Rusoil, OPTI, Ufimneft, PNB, Yuzhnaya Neftyanaya Kompaniya, Gazoil,
+KNP, Ekoil, Neftekhimprom, V&V, Likom, Surgutneftegaz, TamicEnergy,
+Get Petrol, UralKontraktNeft, Zyuratkul, Nyagan-gaz, Oktan, BRK, Lyuksoil,
+Kraysneft, Region 24, Nika, Gaznefteprodukt, TransSib, Sibirneft, NNK,
+Sakhaneftegazsbyt, Nefetmarket, Tuymaada-neft, Oktant, Benzo, NK Ussuri,
+Dalnefteprodukt, EKA, TES, IRBIS, Trassa and Sibnefteprodukt. They download
+nothing and add no buttons: load points with **Import…**, and the plugin
+recognises OSM objects by `brand`/`name`.
+
+**Topline** (Omsk and the eastern direction, 60 stations) is an experiment:
+the plugin first matches by textual address — `addr:street` +
+`addr:housenumber` — without relying on coordinates. If no address match is
+found, it falls back to the usual coordinate search. Address matches are
+flagged in the details so they can be checked by eye.
+
+The station number belongs in `ref` — without “№” and the word “АЗС”,
+for example `ref=5`. `name` should be the brand or the station's own name,
+not “АЗС №5”. If `name` contains a number,
+the plugin warns about it and proposes moving the number to `ref` while
+cleaning `name` to the chain name.
+
 ## Store formats
 
 | API code | What it is | How it is handled |
@@ -268,7 +306,7 @@ from `JOSM_JAR` (default `~/Downloads/josm-latest.jar`). JDK 17+ is required.
 ## Install
 
 Ready-made archives are in the [release](https://github.com/Glebzilla/josm-chainpoi/releases):
-`chainpoi-0.2.0-windows.zip` for Windows and `chainpoi-0.2.0-macos-linux.zip`
+`chainpoi-0.3.4-windows.zip` for Windows and `chainpoi-0.3.4-macos-linux.zip`
 for macOS and Linux. Each contains the jar, the install script and short notes.
 
 **JOSM must be closed**: otherwise it overwrites `preferences.xml` on exit.
