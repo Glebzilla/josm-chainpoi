@@ -110,6 +110,10 @@ public final class Profiles {
                     Profiles::withStationRef, null)
                     .inGroup("АЗС")
                     .byAddress(),
+            new Profile("neftmagistral", "Нефтьмагистраль", FUEL_KEYS,
+                    p -> fuelNamed(p, "нефтьмагистраль", "neftmagistral"),
+                    store -> new LinkedHashMap<>(store.tags), null)
+                    .inGroup("АЗС"),
             new Profile("wildberries", "Wildberries", SHOP_KEYS,
                     p -> shopNamed(p, "wildberries", "вайлдберриз"),
                     store -> new LinkedHashMap<>(store.tags), null),
@@ -129,7 +133,6 @@ public final class Profiles {
             fuelFile("teboil", "Teboil", "teboil"),
             fuelFile("gazprom", "Газпром", "газпром"),
             fuelFile("bashneft", "Башнефть", "башнефть"),
-            fuelFile("neftmagistral", "Нефтьмагистраль", "нефтьмагистраль"),
             fuelFile("kalina-oil", "Калина Ойл", "калина ойл", "kalina oil"),
             fuelFile("dvizhenie", "Движение", "движение"),
             fuelFile("ortk", "ОРТК", "ортк"),

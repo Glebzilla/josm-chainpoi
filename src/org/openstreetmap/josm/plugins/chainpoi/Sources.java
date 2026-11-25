@@ -51,6 +51,8 @@ public final class Sources {
                 return "taifazs.ru";
             case "topline":
                 return "azs-topline.ru";
+            case "neftmagistral":
+                return "neftm.ru";
             case "rigla":
                 return "rigla.ru";
             default:

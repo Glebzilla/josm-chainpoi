@@ -74,10 +74,12 @@ public class ReviewPanel extends ToggleDialog {
     private final TatneftProvider tatneftProvider = new TatneftProvider();
     private final TaifProvider taifProvider = new TaifProvider();
     private final ToplineProvider toplineProvider = new ToplineProvider();
+    private final NeftmagistralProvider neftmagistralProvider = new NeftmagistralProvider();
     private final List<ChainProvider> providers = List.of(
             new MagnitProvider(), new PyaterochkaProvider(), kbProvider, wbProvider,
             riglaProvider, yarcheProvider, mariaRaProvider,
-            lukoilProvider, gazpromneftProvider, tatneftProvider, taifProvider, toplineProvider);
+            lukoilProvider, gazpromneftProvider, tatneftProvider, taifProvider,
+            toplineProvider, neftmagistralProvider);
 
     private final ReviewTableModel model = new ReviewTableModel();
     private final JTable table = new JTable(model);
@@ -99,7 +101,7 @@ public class ReviewPanel extends ToggleDialog {
     private static final Set<String> DIRECT_CHAINS = Set.of(
             "magnit", "magnit-kosmetik", "pyaterochka",
             "krasnoe-beloe", "wildberries", "rigla", "yarche", "maria-ra",
-            "lukoil", "gazpromneft", "tatneft", "taif", "topline");
+            "lukoil", "gazpromneft", "tatneft", "taif", "topline", "neftmagistral");
 
     /** Сети, загруженные из файла (для них переключателя нет). */
     private final Set<String> fileChains = new LinkedHashSet<>();
@@ -338,7 +340,8 @@ public class ReviewPanel extends ToggleDialog {
                 || enabledChains.contains("gazpromneft")
                 || enabledChains.contains("tatneft")
                 || enabledChains.contains("taif")
-                || enabledChains.contains("topline");
+                || enabledChains.contains("topline")
+                || enabledChains.contains("neftmagistral");
         if (fuelEnabled) {
             boolean fresh = true;
             if (enabledChains.contains("lukoil") && !lukoilProvider.hasFreshCache(bounds)) {
@@ -356,11 +359,16 @@ public class ReviewPanel extends ToggleDialog {
             if (enabledChains.contains("topline") && !toplineProvider.hasFreshCache(bounds)) {
                 fresh = false;
             }
+            if (enabledChains.contains("neftmagistral")
+                    && !neftmagistralProvider.hasFreshCache(bounds)) {
+                fresh = false;
+            }
             boolean allow = true;
             if (!fresh) {
                 int answer = JOptionPane.showConfirmDialog(this,
                         "Загрузить данные АЗС?\n\n"
-                        + "Лукойл, Газпромнефть, Татнефть, ТАИФ-НК и Топлайн — до пяти запросов, около 8 МБ.\n"
+                        + "Лукойл, Газпромнефть, Татнефть, ТАИФ-НК, Топлайн и Нефтьмагистраль —\n"
+                        + "до шести запросов, около 8 МБ.\n"
                         + "В кэш попадут только АЗС рядом с текущей областью.\n"
                         + "Кэш хранится 7 дней.",
                         "Сетевые АЗС", JOptionPane.YES_NO_OPTION,
@@ -372,12 +380,14 @@ public class ReviewPanel extends ToggleDialog {
             tatneftProvider.setAllowDownload(allow);
             taifProvider.setAllowDownload(allow);
             toplineProvider.setAllowDownload(allow);
+            neftmagistralProvider.setAllowDownload(allow);
         } else {
             lukoilProvider.setAllowDownload(false);
             gazpromneftProvider.setAllowDownload(false);
             tatneftProvider.setAllowDownload(false);
             taifProvider.setAllowDownload(false);
             toplineProvider.setAllowDownload(false);
+            neftmagistralProvider.setAllowDownload(false);
         }
 
         riglaProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
@@ -388,6 +398,7 @@ public class ReviewPanel extends ToggleDialog {
         tatneftProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
         taifProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
         toplineProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
+        neftmagistralProvider.setProgress(text -> SwingUtilities.invokeLater(() -> status.setText(text)));
 
         checkButton.setEnabled(false);
         applyButton.setEnabled(false);
@@ -589,6 +600,8 @@ public class ReviewPanel extends ToggleDialog {
                 return "ТАИФ";
             case "topline":
                 return "ТПЛ";
+            case "neftmagistral":
+                return "НМ";
             default:
                 return fallback;
         }
@@ -882,6 +895,7 @@ public class ReviewPanel extends ToggleDialog {
             case "taif":
                 return "chain-taif";
             case "topline":
+            case "neftmagistral":
                 return "chain-fuel";
             default:
                 return "chainpoi";

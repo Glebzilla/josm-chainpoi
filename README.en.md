@@ -10,7 +10,8 @@ Supported chains: **Magnit** (`MM`, `MC`, `GM`, `MM_MINI`),
 **Krasnoe&Beloe** (the chain's address catalogue), **Wildberries**
 (a ~75 MB pickup-point file downloaded after confirmation), **Rigla**
 (official GraphQL pharmacy list), **Yarche!**, **Maria-Ra**, and fuel
-stations: **Lukoil**, **Gazpromneft**, **Tatneft**, **TAIF-NK**, **Topline**.
+stations: **Lukoil**, **Gazpromneft**, **Tatneft**, **TAIF-NK**, **Topline**,
+**Neftmagistral**.
 
 ![Chain stores panel in JOSM](docs/screenshot.png)
 
@@ -39,9 +40,10 @@ stations: **Lukoil**, **Gazpromneft**, **Tatneft**, **TAIF-NK**, **Topline**.
    **Yarche!** is fetched from 31 regional pages with addresses and coordinates:
    all on the first run, then only nearby regions. **Maria-Ra** comes from one
    “Store map” page containing JSON points and hours. **Lukoil**,
-   **Gazpromneft**, **Tatneft**, **TAIF-NK** and **Topline** fuel stations come
-   from the chains' official locators after confirmation; fuel types are
-   written as `fuel:diesel`, `fuel:octane_92`, `fuel:octane_95`, etc.
+   **Gazpromneft**, **Tatneft**, **TAIF-NK**, **Topline** and
+   **Neftmagistral** fuel stations come from the chains' official locators
+   after confirmation; fuel types are written as `fuel:diesel`,
+   `fuel:octane_92`, `fuel:octane_95`, etc.
    The cache is stored in 1°×1° tiles and only for areas you have checked:
    mapping in Krasnodar does not put Far East fuel stations on disk. Data is
    refreshed every 7 days; tiles not requested for a month are deleted. The
@@ -208,8 +210,8 @@ For fuel stations the plugin writes `amenity=fuel`, `name`/`brand` and
 `fuel:diesel`, `fuel:octane_80/92/95/98/100`, `fuel:lpg`, `fuel:cng` and
 `fuel:lng`.
 
-For 53 fuel chains without an open API, import and recognition profiles are
-included: Rosneft, Teboil, Gazprom, Bashneft, Neftmagistral, Kalina Oil,
+For 52 fuel chains without an open API, import and recognition profiles are
+included: Rosneft, Teboil, Gazprom, Bashneft, Kalina Oil,
 Dvizhenie, ORTK, VTK, PRIME, Baltneft, LTK, Kirishiavtoreservis,
 Atan, Rusoil, OPTI, Ufimneft, PNB, Yuzhnaya Neftyanaya Kompaniya, Gazoil,
 KNP, Ekoil, Neftekhimprom, V&V, Likom, Surgutneftegaz, TamicEnergy,
@@ -219,6 +221,10 @@ Sakhaneftegazsbyt, Nefetmarket, Tuymaada-neft, Oktant, Benzo, NK Ussuri,
 Dalnefteprodukt, EKA, TES, IRBIS, Trassa and Sibnefteprodukt. They download
 nothing and add no buttons: load points with **Import…**, and the plugin
 recognises OSM objects by `brand`/`name`.
+
+**Neftmagistral** (Moscow and Moscow Oblast, about 105 stations) is parsed from
+the official map at `neftm.ru`: address, coordinates, station number in `ref`
+and fuel types from the filters.
 
 **Topline** (Omsk and the eastern direction, 60 stations) is an experiment:
 the plugin first matches by textual address — `addr:street` +
@@ -306,7 +312,7 @@ from `JOSM_JAR` (default `~/Downloads/josm-latest.jar`). JDK 17+ is required.
 ## Install
 
 Ready-made archives are in the [release](https://github.com/Glebzilla/josm-chainpoi/releases):
-`chainpoi-0.3.4-windows.zip` for Windows and `chainpoi-0.3.4-macos-linux.zip`
+`chainpoi-0.3.5-windows.zip` for Windows and `chainpoi-0.3.5-macos-linux.zip`
 for macOS and Linux. Each contains the jar, the install script and short notes.
 
 **JOSM must be closed**: otherwise it overwrites `preferences.xml` on exit.
