@@ -267,7 +267,7 @@ JOSM_JAR=/путь/к/josm-latest.jar ./build.sh
 ## Установка
 
 Готовые сборки — в [релизе](https://github.com/Glebzilla/josm-chainpoi/releases):
-`chainpoi-0.1.0-windows.zip` для Windows и `chainpoi-0.1.0-macos-linux.zip`
+`chainpoi-0.2.0-windows.zip` для Windows и `chainpoi-0.2.0-macos-linux.zip`
 для macOS и Linux. Внутри jar, скрипт установки и короткая инструкция.
 
 **JOSM должен быть закрыт**: иначе он перезапишет `preferences.xml` при выходе.

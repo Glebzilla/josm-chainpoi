@@ -268,7 +268,7 @@ from `JOSM_JAR` (default `~/Downloads/josm-latest.jar`). JDK 17+ is required.
 ## Install
 
 Ready-made archives are in the [release](https://github.com/Glebzilla/josm-chainpoi/releases):
-`chainpoi-0.1.0-windows.zip` for Windows and `chainpoi-0.1.0-macos-linux.zip`
+`chainpoi-0.2.0-windows.zip` for Windows and `chainpoi-0.2.0-macos-linux.zip`
 for macOS and Linux. Each contains the jar, the install script and short notes.
 
 **JOSM must be closed**: otherwise it overwrites `preferences.xml` on exit.
